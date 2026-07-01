@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Causal Framework Tool — Data Shift Mitigation</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c1:#ea580c; --c2:#2563eb; --c3:#16a34a; --c4:#7c3aed;
+  --col-target:#b45309; --col-obs:#1d4ed8; --col-lat:#94a3b8; --col-shift:#1e293b;
+  --bg:#f1f5f9; --surf:#fff; --border:#e2e8f0;
+  --text:#0f172a; --muted:#64748b; --red:#ef4444; --green:#22c55e; --amber:#f59e0b;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;font-size:14px}
+
+/* HEADER */
+header{background:var(--surf);border-bottom:1px solid var(--border);padding:.75rem 1.5rem 0;flex-shrink:0}
+header h1{font-size:1rem;font-weight:800}
+header .sub{font-size:.72rem;color:var(--muted);margin-top:1px}
+.stepper{display:flex;align-items:stretch;margin-top:.85rem;overflow-x:auto}
+.step-tab{display:flex;align-items:center;gap:.4rem;padding:.55rem 1.1rem;font-size:.72rem;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;cursor:default;transition:all .15s;user-select:none}
+.step-tab .snum{width:19px;height:19px;border-radius:50%;background:#e2e8f0;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;transition:all .15s}
+.step-tab[data-s="0"].active{color:var(--c1);border-bottom-color:var(--c1)} .step-tab[data-s="0"].active .snum{background:var(--c1);color:#fff}
+.step-tab[data-s="1"].active{color:var(--c2);border-bottom-color:var(--c2)} .step-tab[data-s="1"].active .snum{background:var(--c2);color:#fff}
+.step-tab[data-s="2"].active{color:var(--c3);border-bottom-color:var(--c3)} .step-tab[data-s="2"].active .snum{background:var(--c3);color:#fff}
+.step-tab[data-s="3"].active{color:var(--c4);border-bottom-color:var(--c4)} .step-tab[data-s="3"].active .snum{background:var(--c4);color:#fff}
+.step-tab.done .snum{background:#94a3b8;color:#fff}
+.step-sep{color:#cbd5e1;padding:0 .1rem;align-self:center;font-size:1.1rem;flex-shrink:0}
+
+/* MAIN */
+main{flex:1;max-width:960px;width:100%;margin:0 auto;padding:1.5rem 1.25rem 5.5rem}
+.step-panel{display:none} .step-panel.active{display:block}
+
+/* CARDS */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.85rem}
+.sec-h{font-size:1rem;font-weight:700;margin-bottom:.2rem}
+.sec-p{font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:1rem}
+
+/* LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+@media(max-width:640px){.two-col,.three-col{grid-template-columns:1fr}}
+
+/* FORMS */
+.field{margin-bottom:.65rem}
+.field label{display:block;font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:.28rem;letter-spacing:.03em}
+input[type=text],select,textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:.38rem .6rem;font-size:.82rem;font-family:inherit;color:var(--text);background:var(--surf);outline:none;transition:border-color .15s}
+input[type=text]:focus,select:focus,textarea:focus{border-color:#94a3b8;box-shadow:0 0 0 2px rgba(148,163,184,.15)}
+textarea{resize:vertical;min-height:70px;line-height:1.5}
+.form-row{display:flex;gap:.5rem;align-items:flex-end}
+.form-row .field{flex:1;margin-bottom:0}
+
+/* BUTTONS */
+.btn{cursor:pointer;border:none;border-radius:6px;padding:.38rem .9rem;font-size:.78rem;font-weight:700;white-space:nowrap;transition:filter .15s,opacity .15s;font-family:inherit}
+.btn:hover{filter:brightness(.9)} .btn:disabled{opacity:.4;cursor:default;filter:none}
+.btn-dark{background:#0f172a;color:#fff}
+.btn-c1{background:var(--c1);color:#fff} .btn-c2{background:var(--c2);color:#fff}
+.btn-c3{background:var(--c3);color:#fff} .btn-c4{background:var(--c4);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-del{background:transparent;border:1px solid #fecaca;color:#dc2626;font-size:.68rem;padding:.18rem .5rem}
+.btn-sm{padding:.22rem .65rem;font-size:.72rem}
+.btn-load{background:#f1f5f9;border:1px solid var(--border);color:var(--muted);font-size:.72rem}
+
+/* ITEM LISTS */
+.item-list{display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;min-height:2rem}
+.item-row{display:flex;align-items:center;gap:.5rem;padding:.32rem .65rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;background:#f8fafc}
+.item-name{flex:1;font-weight:600}
+.tag{font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.tag-target{background:#fef3c7;color:#92400e}
+.tag-obs{background:#dbeafe;color:#1e40af}
+.tag-lat{background:#f1f5f9;color:#475569;border:1px solid var(--border)}
+.tag-shift{background:#1e293b;color:#f1f5f9}
+.empty-hint{text-align:center;color:var(--muted);font-size:.75rem;font-style:italic;padding:.75rem .5rem}
+
+/* DAG */
+.dag-wrap{background:#f8fafc;border:1px solid var(--border);border-radius:8px;position:relative;overflow:hidden}
+.dag-wrap svg{display:block;cursor:default}
+.dag-legend{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:.5rem;font-size:.68rem;color:var(--muted)}
+.leg-item{display:flex;align-items:center;gap:4px}
+.leg-circle{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.leg-dashed{width:10px;height:10px;border-radius:50%;border:2px dashed var(--muted);flex-shrink:0}
+
+/* BANNERS */
+.banner{border-radius:7px;padding:.6rem .85rem;font-size:.75rem;line-height:1.55;margin-bottom:.85rem}
+.banner-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.banner-warn{background:#fffbeb;border:1px solid #fde68a;color:#78350f}
+.banner-danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.divider{height:1px;background:var(--border);margin:.85rem 0}
+
+/* STEP III — QUESTIONS */
+.q-layout{display:flex;gap:1rem}
+.q-main{flex:1.2;min-width:0}
+.q-side{width:240px;flex-shrink:0}
+@media(max-width:680px){.q-layout{flex-direction:column} .q-side{width:100%}}
+
+.q-progress{display:flex;gap:4px;margin-bottom:1rem;align-items:center}
+.q-dot{width:8px;height:8px;border-radius:50%;background:#e2e8f0;transition:background .2s;flex-shrink:0}
+.q-dot.done{background:#86efac} .q-dot.active{background:var(--c3);box-shadow:0 0 0 2px rgba(22,163,74,.25)}
+
+.q-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+.q-label{font-size:.68rem;font-weight:800;color:var(--c3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem}
+.q-text{font-size:.95rem;font-weight:700;line-height:1.5;margin-bottom:.3rem}
+.q-hint{font-size:.75rem;color:var(--muted);line-height:1.55;margin-bottom:1rem}
+
+.ans-opts{display:flex;flex-direction:column;gap:.4rem}
+.ans-opt{display:flex;align-items:center;gap:.6rem;padding:.55rem .8rem;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:.82rem;font-weight:500}
+.ans-opt:hover{border-color:#94a3b8;background:#f8fafc}
+.ans-opt.sel{border-color:var(--c3);background:#f0fdf4;color:#166534}
+.ans-radio{width:16px;height:16px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ans-opt.sel .ans-radio{border-color:var(--c3);background:var(--c3)}
+.ans-opt.sel .ans-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+
+/* Stability table */
+.stab-table{display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem}
+.stab-row{display:flex;align-items:center;gap:.6rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:7px;background:#f8fafc}
+.stab-name{flex:1;font-weight:700;font-size:.83rem}
+.stab-hint{font-size:.68rem;color:var(--muted);flex:1.5;line-height:1.4}
+.stab-toggle{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);flex-shrink:0}
+.stab-btn{padding:.22rem .65rem;font-size:.7rem;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:inherit;transition:all .12s}
+.stab-btn.s-stable{background:#dcfce7;color:#166534}
+.stab-btn.s-unstable{background:#fee2e2;color:#991b1b}
+
+/* VERDICT */
+.verdict{border-radius:10px;padding:1.25rem 1.5rem;margin-top:1rem}
+.v-feasible{background:#f0fdf4;border:2px solid #86efac}
+.v-infeasible{background:#fef2f2;border:2px solid #fca5a5}
+.v-caveats{background:#fffbeb;border:2px solid #fcd34d}
+.v-title{font-size:1.05rem;font-weight:800;margin-bottom:.45rem}
+.v-feasible .v-title{color:#166534} .v-infeasible .v-title{color:#991b1b} .v-caveats .v-title{color:#854d0e}
+.v-body{font-size:.82rem;line-height:1.7}
+.v-body ul{padding-left:1.2rem;margin-top:.35rem}
+.v-body li{margin-bottom:.25rem}
+
+/* STRATEGY CARDS */
+.strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+@media(max-width:640px){.strat-grid{grid-template-columns:1fr}}
+.strat-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:1rem;border-left:4px solid var(--c4)}
+.strat-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.strat-name{font-size:.88rem;font-weight:700;margin-bottom:.3rem}
+.strat-why{font-size:.65rem;font-weight:800;color:var(--c4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.strat-desc{font-size:.75rem;color:var(--muted);line-height:1.55}
+
+/* SUMMARY PANEL */
+.summary-section{margin-bottom:.75rem}
+.summary-title{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+.summary-val{font-size:.78rem;line-height:1.5}
+.summary-tag{font-size:.65rem;padding:1px 6px;border-radius:12px;background:#f1f5f9;border:1px solid var(--border);color:var(--muted);margin:1px 2px;display:inline-block}
+.summary-tag.tag-sv{background:#1e293b;color:#f1f5f9;border-color:#1e293b}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--border);padding:.7rem 1.5rem;display:flex;justify-content:space-between;align-items:center;z-index:100;gap:.75rem}
+.nav-center{font-size:.75rem;color:var(--muted);text-align:center;flex:1}
+.nav-left,.nav-right{display:flex;gap:.5rem;align-items:center}
+.err-toast{font-size:.73rem;color:#dc2626}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Causal Framework Tool</h1>
+  <div class="sub">A guided tool for designing predictive models robust to data shifts &mdash; based on Butler et al. (2026)</div>
+  <div class="stepper" id="stepper"></div>
+</header>
+
+<main>
+  <div class="step-panel" id="step0"></div>
+  <div class="step-panel" id="step1"></div>
+  <div class="step-panel" id="step2"></div>
+  <div class="step-panel" id="step3"></div>
+</main>
+
+<div class="bottom-nav">
+  <div class="nav-left">
+    <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)">&#8592; Back</button>
+  </div>
+  <div class="nav-center" id="nav-hint"></div>
+  <div class="nav-right">
+    <span class="err-toast" id="nav-err"></span>
+    <button class="btn btn-dark" id="btn-next" onclick="navigate(1)">Next &#8594;</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────
+let nodeSeq = 0, shiftSeq = 0;
+
+const S = {
+  step: 0,    // 0=ProblemConceptualization, 1=CausalDesc, 2=Feasibility, 3=Strategies
+  subStep: 0, // Within step 2: 0=stability, 1..6=questions, 7=verdict
+
+  nodes: [],      // {id,name,type:'observed'|'latent'|'target'}
+  edges: [],      // {from,to}
+  problemCtx: '', // text description
+
+  shiftVars: [],  // {id,name,affects:[nodeId,...]}
+  structAssump: '',
+  funcAssump: '',
+
+  stableMap: {},  // nodeId → true|false
+  answers: { canAdapt:null, privacyOk:null, sufficientData:null, computeConstr:null, canIsolate:null, canPreprocess:null },
+
+  verdict: null,  // 'feasible'|'infeasible'|'caveats'
+  nodePos: {},    // id/'sv_'+id → {x,y}
+  dragKey: null,
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// GRAPH OPERATIONS
+// ─────────────────────────────────────────────────────────────────────
+function addNode(name, type) {
+  name = name.trim();
+  if (!name) return 'Node name is required.';
+  if (S.nodes.some(n => n.name.toLowerCase() === name.toLowerCase())) return 'A node with this name already exists.';
+  if (type === 'target') S.nodes.forEach(n => { if (n.type === 'target') n.type = 'observed'; });
+  const id = ++nodeSeq;
+  S.nodes.push({ id, name, type });
+  S.stableMap[id] = null;
+  S.nodePos = {}; // reset layout
+  renderAll();
+  return null;
+}
+
+function removeNode(id) {
+  S.nodes = S.nodes.filter(n => n.id !== id);
+  S.edges = S.edges.filter(e => e.from !== id && e.to !== id);
+  S.shiftVars.forEach(sv => sv.affects = sv.affects.filter(x => x !== id));
+  delete S.stableMap[id];
+  delete S.nodePos[id];
+  renderAll();
+}
+
+function addEdge(fromId, toId) {
+  if (fromId === toId) return 'Source and target must be different.';
+  if (S.edges.some(e => e.from === fromId && e.to === toId)) return 'This edge already exists.';
+  if (pathExists(toId, fromId)) return 'This edge would create a cycle.';
+  S.edges.push({ from: fromId, to: toId });
+  renderAll();
+  return null;
+}
+
+function removeEdge(from, to) {
+  S.edges = S.edges.filter(e => !(e.from === from && e.to === to));
+  renderAll();
+}
+
+function pathExists(start, end) {
+  const vis = new Set(), q = [start];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === end) return true;
+    if (vis.has(cur)) continue;
+    vis.add(cur);
+    S.edges.forEach(e => { if (e.from === cur) q.push(e.to); });
+  }
+  return false;
+}
+
+function addShiftVar(name, affects) {
+  name = name.trim();
+  if (!name) return 'Shift variable name is required.';
+  if (S.shiftVars.some(sv => sv.name.toLowerCase() === name.toLowerCase())) return 'A shift variable with this name already exists.';
+  const id = ++shiftSeq;
+  S.shiftVars.push({ id, name, affects: [...affects] });
+  affects.forEach(nid => { if (S.stableMap[nid] === null) S.stableMap[nid] = false; });
+  S.nodePos = {};
+  renderAll();
+  return null;
+}
+
+function removeShiftVar(id) {
+  S.shiftVars = S.shiftVars.filter(sv => sv.id !== id);
+  delete S.nodePos['sv_' + id];
+  renderAll();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// LAYOUT
+// ─────────────────────────────────────────────────────────────────────
+function computeLayout(W, H) {
+  const pos = {};
+  if (S.nodes.length === 0) return pos;
+
+  const adj = {}, inDeg = {};
+  S.nodes.forEach(n => { adj[n.id] = []; inDeg[n.id] = 0; });
+  S.edges.forEach(e => {
+    if (adj[e.from] !== undefined && inDeg[e.to] !== undefined) {
+      adj[e.from].push(e.to);
+      inDeg[e.to]++;
+    }
+  });
+
+  const layers = [], placed = new Set();
+  let q = S.nodes.filter(n => inDeg[n.id] === 0).map(n => n.id);
+  const rem = { ...inDeg };
+  while (q.length) {
+    layers.push([...q]);
+    q.forEach(id => placed.add(id));
+    const nx = [];
+    q.forEach(id => (adj[id] || []).forEach(nb => { rem[nb]--; if (rem[nb] === 0) nx.push(nb); }));
+    q = nx;
+  }
+  S.nodes.forEach(n => { if (!placed.has(n.id)) { layers.push([n.id]); placed.add(n.id); } });
+
+  const PAD = 52, nL = layers.length;
+  layers.forEach((layer, li) => {
+    const x = nL === 1 ? W / 2 : PAD + ((W - 2 * PAD) * li) / Math.max(nL - 1, 1);
+    layer.forEach((id, ki) => {
+      if (S.nodePos[id]) { pos[id] = S.nodePos[id]; }
+      else {
+        const y = PAD + ((H - 2 * PAD) * (ki + 0.5)) / layer.length;
+        pos[id] = { x, y };
+        S.nodePos[id] = pos[id];
+      }
+    });
+  });
+
+  S.shiftVars.forEach(sv => {
+    const key = 'sv_' + sv.id;
+    if (S.nodePos[key]) { pos[key] = S.nodePos[key]; return; }
+    if (sv.affects.length > 0) {
+      const xs = sv.affects.map(id => pos[id]?.x).filter(Boolean);
+      const ys = sv.affects.map(id => pos[id]?.y).filter(Boolean);
+      const x = xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : W / 2;
+      const minY = ys.length ? Math.min(...ys) : H / 2;
+      pos[key] = { x: Math.max(28, Math.min(W - 28, x)), y: Math.max(22, minY - 65) };
+    } else {
+      pos[key] = { x: W - 45, y: 30 };
+    }
+    S.nodePos[key] = pos[key];
+  });
+
+  return pos;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// SVG
+// ─────────────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+function se(tag, a) {
+  const el = document.createElementNS(NS, tag);
+  if (a) Object.entries(a).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+function renderDAG(svgId, opts = {}) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const wrap = svg.parentElement;
+  const W = wrap.clientWidth || 460;
+  const H = parseInt(svg.getAttribute('data-h')) || 260;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.innerHTML = '';
+
+  const { stableMap = {}, draggable = false } = opts;
+  const NR = 22, SQ = 19;
+
+  if (S.nodes.length === 0) {
+    const t = se('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#94a3b8', 'font-size': '12', 'font-style': 'italic' });
+    t.textContent = 'Add nodes to preview the graph';
+    svg.appendChild(t);
+    return;
+  }
+
+  const pos = computeLayout(W, H);
+
+  // Markers
+  const defs = se('defs');
+  ['arr', 'sarr'].forEach((id, i) => {
+    const m = se('marker', { id: svgId + id, viewBox: '0 -5 10 10', refX: 8, refY: 0, markerWidth: 5, markerHeight: 5, orient: 'auto' });
+    m.appendChild(se('path', { d: 'M0,-5L10,0L0,5', fill: i === 0 ? '#94a3b8' : '#475569' }));
+    defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+
+  // Regular edges
+  S.edges.forEach(e => {
+    const s = pos[e.from], d = pos[e.to];
+    if (!s || !d) return;
+    const dx = d.x - s.x, dy = d.y - s.y, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    svg.appendChild(se('line', {
+      x1: s.x + ux * NR, y1: s.y + uy * NR,
+      x2: d.x - ux * (NR + 8), y2: d.y - uy * (NR + 8),
+      stroke: '#94a3b8', 'stroke-width': 1.5, 'marker-end': `url(#${svgId}arr)`, opacity: .75,
+    }));
+  });
+
+  // Shift edges
+  S.shiftVars.forEach(sv => {
+    const sp = pos['sv_' + sv.id];
+    if (!sp) return;
+    sv.affects.forEach(nid => {
+      const d = pos[nid];
+      if (!d) return;
+      const dx = d.x - sp.x, dy = d.y - sp.y, len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len, uy = dy / len;
+      svg.appendChild(se('line', {
+        x1: sp.x + ux * (SQ + 2), y1: sp.y + uy * (SQ + 2),
+        x2: d.x - ux * (NR + 8), y2: d.y - uy * (NR + 8),
+        stroke: '#475569', 'stroke-width': 1.5, 'stroke-dasharray': '6,3',
+        'marker-end': `url(#${svgId}sarr)`, opacity: .85,
+      }));
+    });
+  });
+
+  // Shift variable squares
+  S.shiftVars.forEach(sv => {
+    const p = pos['sv_' + sv.id];
+    if (!p) return;
+    const g = se('g', { transform: `translate(${p.x},${p.y})` });
+    g.appendChild(se('rect', { x: -SQ, y: -SQ, width: SQ * 2, height: SQ * 2, fill: '#1e293b', rx: 3, stroke: '#fff', 'stroke-width': 1.5 }));
+    const tl = se('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '9', 'font-weight': '700', fill: '#f1f5f9', 'pointer-events': 'none' });
+    tl.textContent = sv.name.length > 6 ? sv.name.slice(0, 6) : sv.name;
+    const tt = se('title'); tt.textContent = sv.name + ' (shift variable)';
+    g.appendChild(tt); g.appendChild(tl);
+    if (draggable) { g.style.cursor = 'grab'; g.addEventListener('mousedown', ev => startDrag(ev, 'sv_' + sv.id, svgId)); }
+    svg.appendChild(g);
+  });
+
+  // Regular nodes
+  S.nodes.forEach(nd => {
+    const p = pos[nd.id];
+    if (!p) return;
+    const stable = stableMap[nd.id];
+    const g = se('g', { transform: `translate(${p.x},${p.y})` });
+
+    if (stable === true) g.appendChild(se('circle', { r: NR + 5, fill: 'none', stroke: '#4ade80', 'stroke-width': 2, opacity: .85 }));
+    else if (stable === false) g.appendChild(se('circle', { r: NR + 5, fill: 'none', stroke: '#f87171', 'stroke-width': 2.5, 'stroke-dasharray': '4,3', opacity: .9 }));
+
+    let fill, stroke, dash = '';
+    if (nd.type === 'target') { fill = '#b45309'; stroke = '#fff'; }
+    else if (nd.type === 'latent') { fill = '#f8fafc'; stroke = '#94a3b8'; dash = '5,3'; }
+    else { fill = '#1d4ed8'; stroke = '#fff'; }
+
+    const c = se('circle', { r: NR, fill, stroke, 'stroke-width': 1.5 });
+    if (dash) c.setAttribute('stroke-dasharray', dash);
+    g.appendChild(c);
+
+    const lbl = se('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '11', 'font-weight': '700', fill: nd.type === 'latent' ? '#475569' : '#fff', 'pointer-events': 'none' });
+    lbl.textContent = nd.name.length > 6 ? nd.name.slice(0, 6) : nd.name;
+    const tt = se('title'); tt.textContent = nd.name + (nd.type === 'latent' ? ' (latent)' : nd.type === 'target' ? ' (prediction target)' : '');
+    g.appendChild(tt); g.appendChild(lbl);
+
+    if (draggable) { g.style.cursor = 'grab'; g.addEventListener('mousedown', ev => startDrag(ev, nd.id, svgId)); }
+    svg.appendChild(g);
+  });
+}
+
+function startDrag(ev, key, svgId) {
+  ev.preventDefault();
+  S.dragKey = key;
+  const svg = document.getElementById(svgId);
+  const onMove = e => {
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const sx = (vb.width || r.width) / r.width;
+    const sy = (vb.height || r.height) / r.height;
+    S.nodePos[key] = { x: Math.max(25, (e.clientX - r.left) * sx), y: Math.max(25, (e.clientY - r.top) * sy) };
+    renderDAG(svgId, { draggable: true, stableMap: S.stableMap });
+  };
+  const onUp = () => { S.dragKey = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// STEP RENDERERS
+// ─────────────────────────────────────────────────────────────────────
+
+function renderStep0() {
+  const p = document.getElementById('step0');
+  const target = S.nodes.find(n => n.type === 'target');
+  const otherNodes = S.nodes.filter(n => n.type !== 'target');
+
+  p.innerHTML = `
+<h2 class="sec-h">I. Problem Conceptualization</h2>
+<p class="sec-p">Define your prediction problem: the variables in your system, the target you want to predict, and the deployment context where shifts may occur.</p>
+<div class="banner banner-info">
+  Tip: Load a built-in example to see how the tool works, then explore your own problem.
+  <button class="btn btn-sm btn-load" style="margin-left:.5rem" onclick="loadExample()">Load Example (Lung Cancer)</button>
+</div>
+
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-title">Add Variables</div>
+      <div class="form-row">
+        <div class="field"><label>Variable Name</label><input type="text" id="i-nname" placeholder="e.g. Age, Treatment, Outcome" onkeydown="if(event.key==='Enter')doAddNode()"></div>
+        <div class="field" style="max-width:140px"><label>Type</label>
+          <select id="i-ntype">
+            <option value="observed">Observed</option>
+            <option value="latent">Latent (unobserved)</option>
+            <option value="target">Prediction Target</option>
+          </select>
+        </div>
+      </div>
+      <div id="node-err" class="err-toast"></div>
+      <button class="btn btn-c1 btn-sm" onclick="doAddNode()">+ Add Variable</button>
+
+      <div class="divider"></div>
+      <div class="card-title">Variables</div>
+      <div class="item-list" id="node-list">
+        <div class="empty-hint">No variables added yet</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Add Edges (Causal Dependencies)</div>
+      <div class="form-row">
+        <div class="field"><label>From</label>
+          <select id="i-efrom">${S.nodes.map(n=>`<option value="${n.id}">${n.name}</option>`).join('')}</select>
+        </div>
+        <div style="align-self:flex-end;padding-bottom:.38rem;color:var(--muted);font-weight:700;font-size:1.1rem">→</div>
+        <div class="field"><label>To</label>
+          <select id="i-eto">${S.nodes.map(n=>`<option value="${n.id}">${n.name}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div id="edge-err" class="err-toast"></div>
+      <button class="btn btn-c1 btn-sm" onclick="doAddEdge()">+ Add Edge</button>
+
+      <div class="divider"></div>
+      <div class="card-title">Edges</div>
+      <div class="item-list" id="edge-list">
+        <div class="empty-hint">No edges added yet</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="height:100%;display:flex;flex-direction:column">
+      <div class="card-title">Graph Preview</div>
+      <div class="dag-wrap" style="flex:1;min-height:200px">
+        <svg id="dag0" data-h="250"></svg>
+      </div>
+      <div class="dag-legend">
+        <div class="leg-item"><span class="leg-circle" style="background:var(--col-target)"></span>Prediction target</div>
+        <div class="leg-item"><span class="leg-circle" style="background:var(--col-obs)"></span>Observed</div>
+        <div class="leg-item"><span class="leg-dashed"></span>Latent</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="field">
+        <label>Deployment Context (optional)</label>
+        <textarea id="i-ctx" placeholder="Describe where and how the model will be deployed, and what kinds of variation you anticipate. E.g.: 'Model trained in a specialist hospital, deployed at community clinics. Differences in patient demographics and referral criteria expected.'">${S.problemCtx}</textarea>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+  // Populate node list
+  const nl = p.querySelector('#node-list');
+  if (S.nodes.length > 0) {
+    nl.innerHTML = S.nodes.map(n => `
+      <div class="item-row">
+        <span class="item-name">${escHtml(n.name)}</span>
+        <span class="tag tag-${n.type === 'target' ? 'target' : n.type === 'latent' ? 'lat' : 'obs'}">${n.type === 'target' ? 'Target' : n.type === 'latent' ? 'Latent' : 'Observed'}</span>
+        <button class="btn btn-del" onclick="removeNode(${n.id})">✕</button>
+      </div>`).join('');
+  }
+
+  // Populate edge list
+  const el = p.querySelector('#edge-list');
+  if (S.edges.length > 0) {
+    el.innerHTML = S.edges.map(e => {
+      const fn = S.nodes.find(n => n.id === e.from), tn = S.nodes.find(n => n.id === e.to);
+      return `<div class="item-row">
+        <span class="item-name">${fn ? escHtml(fn.name) : '?'} → ${tn ? escHtml(tn.name) : '?'}</span>
+        <button class="btn btn-del" onclick="removeEdge(${e.from},${e.to})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Context textarea sync
+  p.querySelector('#i-ctx').addEventListener('input', e => S.problemCtx = e.target.value);
+
+  requestAnimationFrame(() => renderDAG('dag0', { draggable: false }));
+}
+
+function renderStep1() {
+  const p = document.getElementById('step1');
+  const obsNodes = S.nodes.filter(n => n.type !== 'latent');
+
+  p.innerHTML = `
+<h2 class="sec-h">II. Causal Description</h2>
+<p class="sec-p">Encode your causal knowledge mathematically. Extend the causal graph with <strong>shift variables</strong> (shown as squares) that index the environments where your model will be deployed. Then record any structural or functional assumptions.</p>
+
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-title">Add Shift Variables</div>
+      <div class="banner banner-info" style="margin-bottom:.75rem">
+        Shift variables represent context/environment indicators (e.g. "Hospital", "Scanner", "Time period"). An edge from a shift variable S → X means X's distribution can vary across environments.
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Shift Variable Name</label>
+          <input type="text" id="i-svname" placeholder="e.g. Hospital, Scanner, Policy" onkeydown="if(event.key==='Enter')doAddShiftVar()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Affects which variables? (check all that apply)</label>
+        <div id="sv-affects" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem">
+          ${S.nodes.length === 0 ? '<span style="color:var(--muted);font-size:.75rem">Add variables in Step I first</span>' :
+            S.nodes.map(n => `<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer;padding:.25rem .5rem;border:1px solid var(--border);border-radius:5px;background:#f8fafc">
+              <input type="checkbox" value="${n.id}" style="width:auto"> ${escHtml(n.name)}
+            </label>`).join('')}
+        </div>
+      </div>
+      <div id="sv-err" class="err-toast"></div>
+      <button class="btn btn-c2 btn-sm" onclick="doAddShiftVar()">+ Add Shift Variable</button>
+
+      <div class="divider"></div>
+      <div class="card-title">Shift Variables</div>
+      <div class="item-list" id="sv-list">
+        <div class="empty-hint">No shift variables added yet</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Causal Assumptions (optional)</div>
+      <div class="field">
+        <label>Structural Assumptions</label>
+        <textarea id="i-struct" placeholder="E.g.: Blood pressure depends linearly on dosage. The target Y is determined by X₁ and X₂ through a logistic function.">${S.structAssump}</textarea>
+      </div>
+      <div class="field">
+        <label>Functional Assumptions about Shifts</label>
+        <textarea id="i-func" placeholder="E.g.: The shift in scanner noise is additive with constant mean and varying variance. The prevalence shift affects only P(Y), not P(X|Y).">${S.funcAssump}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="height:100%;display:flex;flex-direction:column">
+      <div class="card-title">Augmented Causal Graph</div>
+      <div class="banner banner-info" style="font-size:.72rem;margin-bottom:.65rem">
+        Drag nodes to rearrange. Shift variables (dark squares) are connected by dashed edges.
+      </div>
+      <div class="dag-wrap" style="flex:1;min-height:220px">
+        <svg id="dag1" data-h="280"></svg>
+      </div>
+      <div class="dag-legend">
+        <div class="leg-item"><span class="leg-circle" style="background:var(--col-target)"></span>Target</div>
+        <div class="leg-item"><span class="leg-circle" style="background:var(--col-obs)"></span>Observed</div>
+        <div class="leg-item"><span class="leg-dashed"></span>Latent</div>
+        <div class="leg-item"><span class="leg-sq" style="background:#1e293b"></span>Shift variable</div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+  // Populate shift var list
+  const svl = p.querySelector('#sv-list');
+  if (S.shiftVars.length > 0) {
+    svl.innerHTML = S.shiftVars.map(sv => {
+      const affNames = sv.affects.map(id => S.nodes.find(n => n.id === id)?.name || '?').join(', ');
+      return `<div class="item-row">
+        <span class="item-name">${escHtml(sv.name)}</span>
+        <span style="font-size:.72rem;color:var(--muted)">${affNames ? 'affects: ' + affNames : 'no connections'}</span>
+        <button class="btn btn-del" onclick="removeShiftVar(${sv.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  p.querySelector('#i-struct').addEventListener('input', e => S.structAssump = e.target.value);
+  p.querySelector('#i-func').addEventListener('input', e => S.funcAssump = e.target.value);
+
+  requestAnimationFrame(() => renderDAG('dag1', { draggable: true }));
+}
+
+function renderStep2() {
+  const p = document.getElementById('step2');
+  const covariates = S.nodes.filter(n => n.type !== 'target' && n.type !== 'latent');
+  const target = S.nodes.find(n => n.type === 'target');
+  const totalQs = 7; // stability + 6 questions
+
+  p.innerHTML = `
+<h2 class="sec-h">III. Feasibility Analysis</h2>
+<p class="sec-p" style="margin-bottom:.75rem">Answer the questions below to determine whether a robust predictive model is feasible for your problem. Your answers will guide which deployment strategies are applicable.</p>
+<div class="q-layout">
+  <div class="q-main" id="q-main-area"></div>
+  <div class="q-side" id="q-side-area"></div>
+</div>`;
+
+  renderQ3Side();
+  renderQ3Main();
+}
+
+function renderQ3Side() {
+  const side = document.getElementById('q-side-area');
+  if (!side) return;
+  const target = S.nodes.find(n => n.type === 'target');
+  const stableCount = Object.values(S.stableMap).filter(v => v === true).length;
+  const unstableCount = Object.values(S.stableMap).filter(v => v === false).length;
+
+  side.innerHTML = `
+    <div class="card" style="margin-bottom:.75rem">
+      <div class="card-title">Graph</div>
+      <div class="dag-wrap" style="min-height:190px">
+        <svg id="dag2" data-h="195"></svg>
+      </div>
+      <div class="dag-legend" style="margin-top:.4rem">
+        <div class="leg-item"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #4ade80;flex-shrink:0"></span>Stable</div>
+        <div class="leg-item"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px dashed #f87171;flex-shrink:0"></span>Unstable</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Summary</div>
+      <div class="summary-section">
+        <div class="summary-title">Target</div>
+        <div class="summary-val">${target ? `<span class="tag tag-target">${escHtml(target.name)}</span>` : '<em style="color:var(--muted)">Not specified</em>'}</div>
+      </div>
+      <div class="summary-section">
+        <div class="summary-title">Shift Variables</div>
+        <div class="summary-val">${S.shiftVars.length === 0 ? '<em style="color:var(--muted)">None specified</em>' : S.shiftVars.map(sv => `<span class="summary-tag tag-sv">${escHtml(sv.name)}</span>`).join('')}</div>
+      </div>
+      ${S.subStep >= 0 ? `
+      <div class="summary-section">
+        <div class="summary-title">Stability</div>
+        <div class="summary-val" style="font-size:.78rem">
+          ${stableCount > 0 ? `<span style="color:#166534">✓ ${stableCount} stable</span>` : ''}
+          ${unstableCount > 0 ? `<span style="color:#991b1b;${stableCount>0?'margin-left:.5rem':''}">⚠ ${unstableCount} unstable</span>` : ''}
+          ${stableCount === 0 && unstableCount === 0 ? '<em style="color:var(--muted)">Not assessed yet</em>' : ''}
+        </div>
+      </div>` : ''}
+    </div>`;
+
+  requestAnimationFrame(() => renderDAG('dag2', { stableMap: S.stableMap, draggable: false }));
+}
+
+function renderQ3Main() {
+  const main = document.getElementById('q-main-area');
+  if (!main) return;
+
+  const totalDots = 8; // 0=stability, 1-6=questions, 7=verdict
+  const dots = Array.from({ length: totalDots }, (_, i) => {
+    let cls = 'q-dot';
+    if (i < S.subStep) cls += ' done';
+    else if (i === S.subStep) cls += ' active';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  const progressBar = `<div class="q-progress">${dots}<span style="font-size:.68rem;color:var(--muted);margin-left:.5rem">${S.subStep < 7 ? `Step ${S.subStep + 1} of 7` : 'Analysis complete'}</span></div>`;
+
+  if (S.subStep === 0) {
+    renderStabilityQ(main, progressBar);
+  } else if (S.subStep >= 1 && S.subStep <= 6) {
+    renderSingleQ(main, progressBar, S.subStep);
+  } else {
+    renderVerdict(main, progressBar);
+  }
+}
+
+function renderStabilityQ(main, progressBar) {
+  const covariates = S.nodes.filter(n => n.type !== 'target');
+  const shiftAffected = new Set(S.shiftVars.flatMap(sv => sv.affects));
+
+  // Also propagate: if a node is directly affected, and it points to other nodes, those might be unstable too
+  const propagated = new Set(shiftAffected);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    S.edges.forEach(e => {
+      if (propagated.has(e.from) && !propagated.has(e.to)) {
+        const dst = S.nodes.find(n => n.id === e.to);
+        if (dst && dst.type !== 'target') { propagated.add(e.to); changed = true; }
+      }
+    });
+  }
+
+  const rows = covariates.map(n => {
+    const directShift = shiftAffected.has(n.id);
+    const indirectShift = propagated.has(n.id) && !directShift;
+    let hint = '';
+    if (directShift) {
+      const svNames = S.shiftVars.filter(sv => sv.affects.includes(n.id)).map(sv => sv.name).join(', ');
+      hint = `Directly affected by: <strong>${svNames}</strong>`;
+    } else if (indirectShift) {
+      hint = 'Downstream of an affected variable — may be unstable.';
+    } else if (S.shiftVars.length > 0) {
+      hint = 'No direct shift connection — likely stable.';
+    } else {
+      hint = 'No shift variables defined.';
+    }
+
+    const curVal = S.stableMap[n.id];
+    // Initialize if null
+    if (curVal === null) S.stableMap[n.id] = !(directShift || indirectShift);
+
+    const isStable = S.stableMap[n.id];
+    return `<div class="stab-row" id="stabrow-${n.id}">
+      <span class="stab-name">${escHtml(n.name)} <span class="tag tag-${n.type === 'latent' ? 'lat' : 'obs'}" style="font-size:.6rem">${n.type === 'latent' ? 'Latent' : 'Observed'}</span></span>
+      <span class="stab-hint">${hint}</span>
+      <div class="stab-toggle">
+        <button class="stab-btn ${isStable ? 's-stable' : ''}" onclick="setStable(${n.id},true)">Stable</button>
+        <button class="stab-btn ${!isStable ? 's-unstable' : ''}" onclick="setStable(${n.id},false)">Unstable</button>
+      </div>
+    </div>`;
+  });
+
+  main.innerHTML = `${progressBar}
+  <div class="q-card">
+    <div class="q-label">Question 1 of 7 — Stability Classification</div>
+    <div class="q-text">Which variables have a <em>stable</em> relationship with the prediction target across deployment environments?</div>
+    <div class="q-hint">A relationship is <strong>stable</strong> if it remains consistent across different deployment environments (hospitals, time periods, etc.). Shift variables in your graph suggest potential instability. You can override any pre-suggestion below.</div>
+    ${covariates.length === 0
+      ? '<div class="banner banner-warn">No non-target variables defined. Go back to Step I to add covariates.</div>'
+      : `<div class="stab-table">${rows.join('')}</div>`
+    }
+    <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+      <button class="btn btn-c3" onclick="advanceSubStep()">Next Question →</button>
+    </div>
+  </div>`;
+}
+
+function setStable(nodeId, isStable) {
+  S.stableMap[nodeId] = isStable;
+  renderQ3Main();
+  renderQ3Side();
+}
+
+const QUESTIONS = [
+  {
+    key: 'canAdapt',
+    label: 'Question 2 of 7 — Operational Constraints',
+    text: 'Can the model access and use data from the deployment environment to adapt itself?',
+    hint: 'This includes test-time adaptation, fine-tuning on deployment data, domain adaptation with unlabelled target data, or continual learning.',
+    opts: [
+      { val: 'yes', label: 'Yes — deployment data is accessible for adaptation' },
+      { val: 'partial', label: 'Partially — limited access (e.g. only a small sample, no labels)' },
+      { val: 'no', label: 'No — the model must be fixed at deployment time' },
+    ],
+  },
+  {
+    key: 'privacyOk',
+    label: 'Question 3 of 7 — Privacy Constraints',
+    text: 'Are there privacy or regulatory constraints on the use of deployment-site data?',
+    hint: 'For example, GDPR restrictions, data governance policies, or clinical ethics requirements that prevent centralising or storing deployment data.',
+    opts: [
+      { val: 'no', label: 'No significant privacy constraints' },
+      { val: 'yes', label: 'Yes — strict privacy/regulatory restrictions apply' },
+    ],
+  },
+  {
+    key: 'sufficientData',
+    label: 'Question 4 of 7 — Data Availability',
+    text: 'Is there sufficient training data to learn a robust predictive model?',
+    hint: 'Consider whether you have enough labeled examples to train the model reliably. Small datasets limit which methods are feasible.',
+    opts: [
+      { val: 'yes', label: 'Yes — adequate training data is available' },
+      { val: 'unsure', label: 'Uncertain — the dataset is small or may be insufficient' },
+      { val: 'no', label: 'No — data is severely limited' },
+    ],
+  },
+  {
+    key: 'computeConstr',
+    label: 'Question 5 of 7 — Computational Constraints',
+    text: 'Are there strict constraints on inference speed, memory, or compute resources at deployment?',
+    hint: 'Some robustness methods (e.g. ensembles, large neural networks) are computationally expensive. If deployment is on edge devices or in real-time clinical settings, this matters.',
+    opts: [
+      { val: 'no', label: 'No significant computational constraints' },
+      { val: 'yes', label: 'Yes — strict speed, memory or compute limits apply' },
+    ],
+  },
+  {
+    key: 'canIsolate',
+    label: 'Question 6 of 7 — Shift Isolation',
+    text: 'Can the effects of shifts be isolated or controlled using adjustment variables, proxies, or known environment indicators?',
+    hint: 'For example: can you observe which hospital or scanner was used? Are there proxy variables for the shift mechanism? Can you use d-separation arguments to identify stable subsets of the graph?',
+    opts: [
+      { val: 'yes', label: 'Yes — shift mechanism can be identified/controlled' },
+      { val: 'unsure', label: 'Possibly — some proxy information is available' },
+      { val: 'no', label: 'No — the shift mechanism is unknown or unobservable' },
+    ],
+  },
+  {
+    key: 'canPreprocess',
+    label: 'Question 7 of 7 — Preprocessing Options',
+    text: 'Are there data preprocessing techniques that can reduce the influence of the anticipated shifts?',
+    hint: 'Examples include: site-specific normalisation, artifact removal (e.g. scanner harmonisation), de-referencing for signal drift, or known calibration procedures.',
+    opts: [
+      { val: 'yes', label: 'Yes — specific preprocessing steps are known and applicable' },
+      { val: 'unsure', label: 'Possibly — some preprocessing might help but is uncertain' },
+      { val: 'no', label: 'No — no applicable preprocessing is known' },
+    ],
+  },
+];
+
+function renderSingleQ(main, progressBar, subStep) {
+  const q = QUESTIONS[subStep - 1];
+  const curVal = S.answers[q.key];
+
+  main.innerHTML = `${progressBar}
+  <div class="q-card">
+    <div class="q-label">${q.label}</div>
+    <div class="q-text">${q.text}</div>
+    <div class="q-hint">${q.hint}</div>
+    <div class="ans-opts">
+      ${q.opts.map(o => `
+        <div class="ans-opt ${curVal === o.val ? 'sel' : ''}" onclick="selectAnswer('${q.key}','${o.val}')">
+          <div class="ans-radio"></div>
+          <span>${o.label}</span>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:1rem;display:flex;justify-content:space-between">
+      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Previous</button>
+      <button class="btn btn-c3" onclick="advanceSubStep()" ${curVal === null ? 'disabled' : ''}>
+        ${subStep < 6 ? 'Next Question →' : 'See Feasibility Result →'}
+      </button>
+    </div>
+  </div>`;
+}
+
+function selectAnswer(key, val) {
+  S.answers[key] = val;
+  renderQ3Main();
+}
+
+function advanceSubStep() {
+  S.subStep = Math.min(7, S.subStep + 1);
+  if (S.subStep === 7) computeVerdict();
+  renderQ3Main();
+  renderQ3Side();
+}
+
+function retreatSubStep() {
+  S.subStep = Math.max(0, S.subStep - 1);
+  renderQ3Main();
+}
+
+function computeVerdict() {
+  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
+  const hasStable = stableNodes.length > 0;
+  const canIsolate = S.answers.canIsolate !== 'no';
+  const canPreprocess = S.answers.canPreprocess !== 'no';
+  const sufficientData = S.answers.sufficientData !== 'no';
+  const canAdapt = S.answers.canAdapt !== 'no';
+
+  if (!hasStable && !canIsolate && !canPreprocess) {
+    S.verdict = 'infeasible';
+  } else if (hasStable && sufficientData && (canAdapt || canIsolate || canPreprocess)) {
+    S.verdict = 'feasible';
+  } else {
+    S.verdict = 'caveats';
+  }
+}
+
+function renderVerdict(main, progressBar) {
+  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
+  const unstableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === false);
+  const latentNodes = S.nodes.filter(n => n.type === 'latent');
+
+  let verdictHtml = '';
+  if (S.verdict === 'feasible') {
+    verdictHtml = `<div class="verdict v-feasible">
+      <div class="v-title">✓ Problem is Feasible</div>
+      <div class="v-body">
+        Your problem description has sufficient structure to design a robust predictive model.
+        ${stableNodes.length > 0 ? `You have <strong>${stableNodes.length} stable variable(s)</strong> (${stableNodes.map(n=>escHtml(n.name)).join(', ')}) that provide a reliable prediction baseline.` : ''}
+        ${S.answers.canAdapt !== 'no' ? ' The model can adapt to the deployment environment, opening up domain adaptation strategies.' : ''}
+        ${S.answers.canIsolate !== 'no' ? ' Shift effects can be partially isolated or controlled.' : ''}
+        <br><br>Proceed to <strong>Step IV</strong> to see recommended deployment strategies for your problem.
+      </div>
+    </div>`;
+  } else if (S.verdict === 'infeasible') {
+    verdictHtml = `<div class="verdict v-infeasible">
+      <div class="v-title">✗ Problem is Infeasible — Return to Step I</div>
+      <div class="v-body">
+        Based on your current problem description, no reliable mitigation strategy appears applicable:
+        <ul>
+          ${stableNodes.length === 0 ? '<li>No stable covariates identified — the model has no reliable signal that persists across environments.</li>' : ''}
+          ${S.answers.canIsolate === 'no' ? '<li>The shift mechanism cannot be isolated or controlled.</li>' : ''}
+          ${S.answers.canPreprocess === 'no' ? '<li>No preprocessing steps can reduce the shift influence.</li>' : ''}
+        </ul>
+        <br><strong>Suggested next steps — return to Step I and consider:</strong>
+        <ul>
+          <li>Adding additional variables that are causally upstream of the target and unaffected by shifts.</li>
+          <li>Redesigning the prediction target to a quantity with more stable causal determinants.</li>
+          <li>Re-examining your shift assumptions — are they all necessary, or can some be relaxed?</li>
+          <li>Collecting proxy measurements for the shift mechanism to enable isolation strategies.</li>
+          <li>Revisiting whether deployment really requires generalisation across these environments.</li>
+        </ul>
+      </div>
+    </div>`;
+  } else {
+    verdictHtml = `<div class="verdict v-caveats">
+      <div class="v-title">⚠ Problem is Feasible with Caveats</div>
+      <div class="v-body">
+        A solution may be possible, but with limitations:
+        <ul>
+          ${stableNodes.length === 0 ? '<li>No stable covariates — the model will rely entirely on mitigation strategies, with no guaranteed performance floor.</li>' : ''}
+          ${S.answers.sufficientData === 'no' ? '<li>Limited data may prevent some methods (e.g. invariant learning, domain adaptation) from working reliably.</li>' : ''}
+          ${S.answers.sufficientData === 'unsure' ? '<li>Data availability is uncertain — validate that methods requiring multiple environments or large samples are feasible.</li>' : ''}
+          ${S.answers.canAdapt === 'no' && stableNodes.length < 2 ? '<li>Without adaptation and stable features, robustness is very limited.</li>' : ''}
+        </ul>
+        <br>Proceed to <strong>Step IV</strong> to review applicable strategies and their trade-offs for your problem.
+      </div>
+    </div>`;
+  }
+
+  main.innerHTML = `${progressBar}
+  <div class="q-card">
+    <div class="q-label">Feasibility Verdict</div>
+    <div class="q-text">Based on your answers, here is the feasibility assessment:</div>
+    ${verdictHtml}
+    <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Revise Answers</button>
+      ${S.verdict === 'infeasible'
+        ? `<button class="btn btn-c1" onclick="jumpToStep(0)">← Back to Problem Conceptualization</button>`
+        : `<button class="btn btn-c4" onclick="navigate(1)">Proceed to Deployment Strategies →</button>`
+      }
+    </div>
+  </div>`;
+}
+
+function jumpToStep(step) {
+  S.step = step;
+  S.subStep = 0;
+  renderAll();
+}
+
+function renderStep3() {
+  const p = document.getElementById('step3');
+  const strats = computeStrategies();
+  const target = S.nodes.find(n => n.type === 'target');
+  const stableNodes = S.nodes.filter(n => S.stableMap[n.id] === true);
+
+  p.innerHTML = `
+<h2 class="sec-h">IV. Deployment Strategies</h2>
+<p class="sec-p">Based on your causal description and feasibility analysis, the following strategies are recommended for your problem. These are not mutually exclusive — combining them often yields the best results.</p>
+
+<div class="two-col" style="margin-bottom:1rem">
+  <div class="card" style="border-left:4px solid var(--c3)">
+    <div class="card-title">Problem Summary</div>
+    <div style="font-size:.78rem;line-height:1.7">
+      <div><strong>Target:</strong> ${target ? escHtml(target.name) : 'Not specified'}</div>
+      <div><strong>Variables:</strong> ${S.nodes.filter(n=>n.type!=='target').map(n=>escHtml(n.name)).join(', ') || 'None'}</div>
+      <div><strong>Shift variables:</strong> ${S.shiftVars.map(sv=>escHtml(sv.name)).join(', ') || 'None defined'}</div>
+      <div><strong>Stable covariates:</strong> ${stableNodes.map(n=>escHtml(n.name)).join(', ') || 'None identified'}</div>
+    </div>
+  </div>
+  <div class="card" style="border-left:4px solid ${S.verdict==='feasible' ? 'var(--c3)' : S.verdict==='infeasible' ? 'var(--red)' : 'var(--amber)'}">
+    <div class="card-title">Feasibility Verdict</div>
+    <div style="font-size:.88rem;font-weight:700;margin-bottom:.3rem;color:${S.verdict==='feasible' ? '#166534' : S.verdict==='infeasible' ? '#991b1b' : '#854d0e'}">
+      ${S.verdict==='feasible' ? '✓ Feasible' : S.verdict==='infeasible' ? '✗ Infeasible' : '⚠ Feasible with Caveats'}
+    </div>
+    <div style="font-size:.75rem;color:var(--muted);line-height:1.5">
+      ${S.answers.canAdapt !== null ? `<div>Can adapt: <strong>${S.answers.canAdapt}</strong></div>` : ''}
+      ${S.answers.canIsolate !== null ? `<div>Can isolate shift: <strong>${S.answers.canIsolate}</strong></div>` : ''}
+      ${S.answers.canPreprocess !== null ? `<div>Preprocessing available: <strong>${S.answers.canPreprocess}</strong></div>` : ''}
+    </div>
+  </div>
+</div>
+
+${strats.length === 0
+  ? '<div class="banner banner-warn">No strategies applicable given the current feasibility analysis. Return to Step I to revise your problem definition.</div>'
+  : `<div class="strat-grid">${strats.map(s => `
+    <div class="strat-card">
+      <div class="strat-name">${s.name}</div>
+      <div class="strat-why">${s.why}</div>
+      <div class="strat-desc">${s.desc}</div>
+    </div>`).join('')}</div>`
+}
+
+<div style="margin-top:1.5rem">
+  <div class="banner banner-info">
+    <strong>Note:</strong> These recommendations are based on your causal description and the answers you provided. Model design is iterative — empirically evaluating multiple strategies and comparing them in validation studies is recommended. See Butler et al. (2026) for further guidance.
+  </div>
+</div>`;
+}
+
+function computeStrategies() {
+  const strats = [];
+  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
+  const unstableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === false);
+  const latentNodes = S.nodes.filter(n => n.type === 'latent');
+  const hasLatent = latentNodes.length > 0;
+  const hasShifts = S.shiftVars.length > 0;
+  const target = S.nodes.find(n => n.type === 'target');
+
+  const canAdapt = S.answers.canAdapt !== 'no';
+  const noPrivacy = S.answers.privacyOk === 'no'; // 'no' = no constraints = good
+  const sufficientData = S.answers.sufficientData !== 'no';
+  const computeOk = S.answers.computeConstr !== 'yes';
+  const canIsolate = S.answers.canIsolate !== 'no';
+  const canPreprocess = S.answers.canPreprocess !== 'no';
+
+  if (stableNodes.length > 0) {
+    strats.push({
+      name: 'Stable Feature Selection',
+      why: `Applicable because you identified ${stableNodes.length} stable covariate(s): ${stableNodes.map(n=>n.name).join(', ')}.`,
+      desc: 'Build your model using only stable features — those whose relationship with the target is preserved across environments. This gives a performance lower bound regardless of shifts. Even if unstable features improve in-distribution performance, they may harm deployment performance.',
+    });
+  }
+
+  if (unstableNodes.length > 0 && stableNodes.length > 0 && sufficientData) {
+    strats.push({
+      name: 'Invariant Risk Minimization (IRM)',
+      why: 'Applicable because you have both stable and unstable features and sufficient training data.',
+      desc: 'IRM learns a feature representation that achieves an optimal stable predictor across all training environments simultaneously. It explicitly penalises reliance on unstable spurious correlations. Requires data from multiple training environments.',
+    });
+  }
+
+  if (canAdapt && sufficientData) {
+    if (noPrivacy) {
+      strats.push({
+        name: 'Domain Adaptation',
+        why: 'Applicable because the model can access deployment data and no significant privacy constraints apply.',
+        desc: 'Use unlabelled or labelled data from the deployment environment to adapt model parameters or reweight training samples. Approaches include importance weighting (IPW), adversarial domain adaptation, and domain-invariant representation learning.',
+      });
+    } else {
+      strats.push({
+        name: 'Privacy-Preserving Adaptation',
+        why: 'Applicable because adaptation is possible but privacy constraints restrict centralising deployment data.',
+        desc: 'Federated learning or differential privacy techniques allow models to adapt to deployment data without centralising sensitive records. The model updates can be aggregated from local sites while preserving patient privacy.',
+      });
+    }
+  }
+
+  if (canIsolate) {
+    strats.push({
+      name: 'Adjustment Sets / Inverse Probability Weighting',
+      why: 'Applicable because you indicated that the shift mechanism can be observed or estimated.',
+      desc: 'If you can observe the shift variable (e.g. hospital ID, scanner type) or estimate a propensity score for environment membership, inverse probability weighting (IPW) can rebalance the training distribution to resemble the target domain. This "undoes" selection and covariate shifts.',
+    });
+  }
+
+  if (hasLatent && canIsolate) {
+    strats.push({
+      name: 'Proxy Methods for Latent Variables',
+      why: `Applicable because your graph contains latent (unobserved) variables (${latentNodes.map(n=>n.name).join(', ')}) and proxy information is available.`,
+      desc: 'When latent confounders exist, proxy variables — imperfect but correlated measurements — can be used to recover causal relationships. This allows adjustment for confounding even when the confounder itself is not directly observed.',
+    });
+  }
+
+  if (canPreprocess) {
+    strats.push({
+      name: 'Data Preprocessing to Remove Shift Effects',
+      why: 'Applicable because preprocessing steps to reduce shift influence are available.',
+      desc: 'Apply site-specific normalisation, artifact removal, denoising, or calibration to training and deployment data before model training. Examples: ComBat harmonisation for neuroimaging, de-referencing for wandering EEG signals, or standardising measurement protocols.',
+    });
+  }
+
+  if ((S.structAssump || S.funcAssump) && sufficientData) {
+    strats.push({
+      name: 'Causally Robust Optimization',
+      why: 'Applicable because you specified structural or functional assumptions about the data-generating process.',
+      desc: 'When the form of the causal mechanisms is known (e.g. linear relationships, additive noise), these structural constraints can be incorporated into the training objective. This yields estimators that remain valid under the specified class of shifts.',
+    });
+  }
+
+  if (hasShifts && sufficientData && computeOk) {
+    strats.push({
+      name: 'Counterfactual Data Augmentation',
+      why: 'Applicable when you have specified shift variables and sufficient compute for data generation.',
+      desc: 'Use the causal model to generate synthetic counterfactual training examples — what the data would look like under different shift conditions. This artificially diversifies the training distribution and can help models learn invariant representations without needing multi-site data.',
+    });
+  }
+
+  return strats;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// EVENT HANDLERS
+// ─────────────────────────────────────────────────────────────────────
+function doAddNode() {
+  const name = document.getElementById('i-nname')?.value || '';
+  const type = document.getElementById('i-ntype')?.value || 'observed';
+  const err = addNode(name, type);
+  const errEl = document.getElementById('node-err');
+  if (errEl) errEl.textContent = err || '';
+  if (!err) { const inp = document.getElementById('i-nname'); if (inp) { inp.value = ''; inp.focus(); } }
+}
+
+function doAddEdge() {
+  const fromId = parseInt(document.getElementById('i-efrom')?.value);
+  const toId = parseInt(document.getElementById('i-eto')?.value);
+  if (!fromId || !toId) return;
+  const err = addEdge(fromId, toId);
+  const errEl = document.getElementById('edge-err');
+  if (errEl) errEl.textContent = err || '';
+}
+
+function doAddShiftVar() {
+  const name = document.getElementById('i-svname')?.value || '';
+  const checks = document.querySelectorAll('#sv-affects input[type=checkbox]:checked');
+  const affects = Array.from(checks).map(c => parseInt(c.value));
+  const err = addShiftVar(name, affects);
+  const errEl = document.getElementById('sv-err');
+  if (errEl) errEl.textContent = err || '';
+  if (!err) {
+    const inp = document.getElementById('i-svname'); if (inp) { inp.value = ''; inp.focus(); }
+    checks.forEach(c => c.checked = false);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────────────────────────
+function navigate(dir) {
+  // Within Step III, use subStep navigation
+  if (S.step === 2 && dir === 1) {
+    if (S.subStep < 7) { advanceSubStep(); return; }
+    // subStep === 7 (verdict) — advance to Step IV only if feasible/caveats
+    if (S.verdict === 'infeasible') {
+      setNavErr('Problem is infeasible. Revise your answers or return to Step I.');
+      return;
+    }
+  }
+  if (S.step === 2 && dir === -1) {
+    if (S.subStep > 0) { retreatSubStep(); return; }
+  }
+
+  const err = validateStep(S.step, dir);
+  if (err) { setNavErr(err); return; }
+  setNavErr('');
+
+  S.step = Math.max(0, Math.min(3, S.step + dir));
+  if (S.step === 2) { S.subStep = 0; initStableMap(); }
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+function initStableMap() {
+  const shiftAffected = new Set(S.shiftVars.flatMap(sv => sv.affects));
+  // Propagate
+  const propagated = new Set(shiftAffected);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    S.edges.forEach(e => {
+      if (propagated.has(e.from) && !propagated.has(e.to)) {
+        const dst = S.nodes.find(n => n.id === e.to);
+        if (dst && dst.type !== 'target') { propagated.add(e.to); changed = true; }
+      }
+    });
+  }
+  S.nodes.forEach(n => {
+    if (n.type !== 'target') {
+      if (S.stableMap[n.id] === null || S.stableMap[n.id] === undefined) {
+        S.stableMap[n.id] = !propagated.has(n.id);
+      }
+    }
+  });
+}
+
+function validateStep(step, dir) {
+  if (dir <= 0) return null; // Always can go back
+  if (step === 0) {
+    if (S.nodes.length < 2) return 'Add at least 2 variables before continuing.';
+    if (!S.nodes.some(n => n.type === 'target')) return 'Mark one variable as the Prediction Target before continuing.';
+  }
+  if (step === 1) {
+    // Step II is optional - can proceed without shift variables
+  }
+  if (step === 2) {
+    if (S.verdict === null) return 'Complete the feasibility analysis before proceeding.';
+    if (S.verdict === 'infeasible') return 'Problem is infeasible. Revise or return to Step I.';
+  }
+  return null;
+}
+
+function setNavErr(msg) {
+  const el = document.getElementById('nav-err');
+  if (el) el.textContent = msg;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────────────────────────────
+function renderAll() {
+  // Update stepper
+  const stepper = document.getElementById('stepper');
+  const labels = [
+    ['I', 'Problem Conceptualization'],
+    ['II', 'Causal Description'],
+    ['III', 'Feasibility Analysis'],
+    ['IV', 'Deployment Strategies'],
+  ];
+  stepper.innerHTML = labels.map(([num, lbl], i) => {
+    let cls = 'step-tab';
+    if (i === S.step) cls += ' active';
+    else if (i < S.step) cls += ' done';
+    return `<div class="${cls}" data-s="${i}"><span class="snum">${num}</span>${lbl}</div>${i < 3 ? '<span class="step-sep">›</span>' : ''}`;
+  }).join('');
+
+  // Show/hide panels
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('step' + i);
+    if (el) el.className = 'step-panel' + (i === S.step ? ' active' : '');
+  }
+
+  // Render current step
+  if (S.step === 0) renderStep0();
+  else if (S.step === 1) renderStep1();
+  else if (S.step === 2) renderStep2();
+  else if (S.step === 3) renderStep3();
+
+  // Update bottom nav
+  const btnBack = document.getElementById('btn-back');
+  const btnNext = document.getElementById('btn-next');
+  const navHint = document.getElementById('nav-hint');
+
+  btnBack.disabled = (S.step === 0 && S.subStep === 0);
+
+  if (S.step === 3) {
+    btnNext.style.display = 'none';
+  } else {
+    btnNext.style.display = '';
+    const labels3 = ['Next: Causal Description →', 'Next: Feasibility Analysis →', 'Next Question →', ''];
+    if (S.step === 2) {
+      if (S.subStep < 7) btnNext.textContent = 'Next Question →';
+      else if (S.verdict !== 'infeasible') btnNext.textContent = 'Deployment Strategies →';
+      else btnNext.textContent = 'Next →';
+    } else {
+      btnNext.textContent = labels3[S.step];
+    }
+  }
+
+  const hints = [
+    'Define your causal graph and prediction target',
+    'Add shift variables and causal assumptions',
+    `Feasibility analysis — question ${S.subStep + 1} of 8`,
+    'Review recommended deployment strategies',
+  ];
+  navHint.textContent = hints[S.step];
+  setNavErr('');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// EXAMPLE
+// ─────────────────────────────────────────────────────────────────────
+function loadExample() {
+  S.nodes = []; S.edges = []; S.shiftVars = []; S.nodePos = {};
+  nodeSeq = 0; shiftSeq = 0;
+
+  // From Butler et al. 2026 — lung cancer screening example
+  const ids = {};
+  ['Age_SES', 'Smoking', 'Lung_Cancer', 'Weight_Loss'].forEach((name, i) => {
+    const type = name === 'Lung_Cancer' ? 'target' : name === 'Age_SES' ? 'latent' : 'observed';
+    const id = ++nodeSeq;
+    ids[name] = id;
+    S.nodes.push({ id, name, type });
+    S.stableMap[id] = null;
+  });
+
+  S.edges = [
+    { from: ids['Age_SES'],    to: ids['Smoking'] },
+    { from: ids['Age_SES'],    to: ids['Lung_Cancer'] },
+    { from: ids['Smoking'],    to: ids['Lung_Cancer'] },
+    { from: ids['Lung_Cancer'],to: ids['Weight_Loss'] },
+  ];
+
+  const svId = ++shiftSeq;
+  S.shiftVars = [{ id: svId, name: 'Screening_Policy', affects: [ids['Weight_Loss']] }];
+  S.stableMap[ids['Weight_Loss']] = false;
+
+  S.problemCtx = 'Model trained on hospital screening data, to be deployed across settings with varying screening criteria. Screening policy changes may affect which patients are tested and which symptoms are captured.';
+  S.structAssump = 'Lung cancer risk is determined by smoking history and background factors (age, occupation, socio-economic status).';
+  S.funcAssump = 'The screening policy shift affects the distribution of Weight_Loss (a downstream symptom) but does not change the causal mechanism from Smoking to Lung_Cancer.';
+
+  renderAll();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  S.nodePos = {};
+  if (S.step === 0) renderDAG('dag0');
+  else if (S.step === 1) renderDAG('dag1', { draggable: true });
+  else if (S.step === 2) renderDAG('dag2', { stableMap: S.stableMap });
+});
+
+renderAll();
+</script>
+</body>
+</html>
