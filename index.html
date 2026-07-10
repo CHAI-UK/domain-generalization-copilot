@@ -209,6 +209,8 @@ const S = {
   verdict: null,  // 'feasible'|'infeasible'|'caveats'
   nodePos: {},    // id/'sv_'+id → {x,y}
   dragKey: null,
+  panDrag: null,
+  view: {},       // svgId → {x,y,scale}
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -355,22 +357,33 @@ function renderDAG(svgId, opts = {}) {
   const wrap = svg.parentElement;
   const W = wrap.clientWidth || 460;
   const H = parseInt(svg.getAttribute('data-h')) || 260;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
   svg.innerHTML = '';
 
-  const { stableMap = {}, draggable = false } = opts;
+  const { stableMap = {}, draggable = false, resetView = false } = opts;
   const NR = 22, SQ = 19;
 
   if (S.nodes.length === 0) {
     const t = se('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#94a3b8', 'font-size': '12', 'font-style': 'italic' });
     t.textContent = 'Add nodes to preview the graph';
     svg.appendChild(t);
+    if (!S.view[svgId]) S.view[svgId] = { x: 0, y: 0, scale: 1 };
     return;
   }
 
   const pos = computeLayout(W, H);
+  if (!S.view[svgId] || resetView) setHomeView(svgId, pos, W, H);
+  const view = S.view[svgId];
+  const vbW = W / view.scale;
+  const vbH = H / view.scale;
+  svg.setAttribute('viewBox', `${view.x} ${view.y} ${vbW} ${vbH}`);
+
+  if (!svg.__graphAttached) {
+    svg.addEventListener('mousedown', ev => onSvgMouseDown(ev, svgId));
+    svg.addEventListener('wheel', ev => onSvgWheel(ev, svgId), { passive: false });
+    svg.__graphAttached = true;
+  }
 
   // Markers
   const defs = se('defs');
@@ -473,6 +486,101 @@ function startDrag(ev, key, svgId) {
   document.addEventListener('mouseup', onUp);
 }
 
+function setHomeView(svgId, pos, W, H) {
+  const view = { x: 0, y: 0, scale: 1 };
+  const points = Object.values(pos);
+  if (points.length > 0) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    points.forEach(p => {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    });
+    const pad = 60;
+    const width = Math.max(1, maxX - minX + pad * 2);
+    const height = Math.max(1, maxY - minY + pad * 2);
+    const scale = Math.min(3, Math.max(0.25, Math.min(W / width, H / height)));
+    view.x = minX - pad;
+    view.y = minY - pad;
+    view.scale = scale;
+  }
+  S.view[svgId] = view;
+}
+
+function onSvgMouseDown(ev, svgId) {
+  if (ev.button !== 0 || S.dragKey) return;
+  if (ev.target.closest('g')) return;
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  ev.preventDefault();
+  const r = svg.getBoundingClientRect();
+  const vb = svg.viewBox.baseVal;
+  const source = {
+    svgId,
+    startX: ev.clientX,
+    startY: ev.clientY,
+    origX: S.view[svgId]?.x ?? 0,
+    origY: S.view[svgId]?.y ?? 0,
+    vbW: vb.width || r.width,
+    vbH: vb.height || r.height,
+    rW: r.width,
+    rH: r.height,
+  };
+
+  const onMove = e => {
+    const dx = (e.clientX - source.startX) * (source.vbW / source.rW);
+    const dy = (e.clientY - source.startY) * (source.vbH / source.rH);
+    S.view[svgId].x = source.origX - dx;
+    S.view[svgId].y = source.origY - dy;
+    renderDAG(svgId, { draggable: true, stableMap: S.stableMap });
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function onSvgWheel(ev, svgId) {
+  ev.preventDefault();
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const view = S.view[svgId] || { x: 0, y: 0, scale: 1 };
+  const r = svg.getBoundingClientRect();
+  const vb = svg.viewBox.baseVal;
+  const factor = ev.deltaY > 0 ? 0.88 : 1.12;
+  const newScale = Math.max(0.25, Math.min(3, view.scale * factor));
+  if (Math.abs(newScale - view.scale) < 0.0001) return;
+  const x = ev.clientX - r.left;
+  const y = ev.clientY - r.top;
+  const viewX = view.x + x * (vb.width / r.width);
+  const viewY = view.y + y * (vb.height / r.height);
+  const newVbW = vb.width * (view.scale / newScale);
+  const newVbH = vb.height * (view.scale / newScale);
+  S.view[svgId] = {
+    x: viewX - x * (newVbW / r.width),
+    y: viewY - y * (newVbH / r.height),
+    scale: newScale,
+  };
+  renderDAG(svgId, { draggable: true, stableMap: S.stableMap });
+}
+
+function resetGraphView(svgId) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  S.view[svgId] = null;
+  renderDAG(svgId, { draggable: true, stableMap: S.stableMap, resetView: true });
+}
+
+function graphControlBar(svgId) {
+  return `<div class="dag-controls" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <button class="btn btn-sm btn-ghost" type="button" onclick="resetGraphView('${svgId}')">Home</button>
+    <div style="font-size:.72rem;color:var(--muted);letter-spacing:.02em">Scroll to zoom • drag empty space to pan • drag nodes to move</div>
+  </div>`;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // STEP RENDERERS
 // ─────────────────────────────────────────────────────────────────────
@@ -539,6 +647,7 @@ function renderStep0() {
   <div>
     <div class="card" style="height:100%;display:flex;flex-direction:column">
       <div class="card-title">Graph Preview</div>
+      ${graphControlBar('dag0')}
       <div class="dag-wrap" style="flex:1;min-height:200px">
         <svg id="dag0" data-h="250"></svg>
       </div>
@@ -583,7 +692,7 @@ function renderStep0() {
   // Context textarea sync
   p.querySelector('#i-ctx').addEventListener('input', e => S.problemCtx = e.target.value);
 
-  requestAnimationFrame(() => renderDAG('dag0', { draggable: false }));
+  requestAnimationFrame(() => renderDAG('dag0', { draggable: true }));
 }
 
 function renderStep1() {
@@ -644,6 +753,7 @@ function renderStep1() {
       <div class="banner banner-info" style="font-size:.72rem;margin-bottom:.65rem">
         Drag nodes to rearrange. Shift variables (dark squares) are connected by dashed edges.
       </div>
+      ${graphControlBar('dag1')}
       <div class="dag-wrap" style="flex:1;min-height:220px">
         <svg id="dag1" data-h="280"></svg>
       </div>
@@ -704,6 +814,7 @@ function renderQ3Side() {
   side.innerHTML = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">Graph</div>
+      ${graphControlBar('dag2')}
       <div class="dag-wrap" style="min-height:190px">
         <svg id="dag2" data-h="195"></svg>
       </div>
@@ -733,7 +844,7 @@ function renderQ3Side() {
       </div>` : ''}
     </div>`;
 
-  requestAnimationFrame(() => renderDAG('dag2', { stableMap: S.stableMap, draggable: false }));
+  requestAnimationFrame(() => renderDAG('dag2', { stableMap: S.stableMap, draggable: true }));
 }
 
 function renderQ3Main() {
@@ -1382,9 +1493,9 @@ function escHtml(s) {
 // ─────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
   S.nodePos = {};
-  if (S.step === 0) renderDAG('dag0');
+  if (S.step === 0) renderDAG('dag0', { draggable: true });
   else if (S.step === 1) renderDAG('dag1', { draggable: true });
-  else if (S.step === 2) renderDAG('dag2', { stableMap: S.stableMap });
+  else if (S.step === 2) renderDAG('dag2', { stableMap: S.stableMap, draggable: true });
 });
 
 renderAll();
