@@ -75,7 +75,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .empty-hint{text-align:center;color:var(--muted);font-size:.75rem;font-style:italic;padding:.75rem .5rem}
 
 /* DAG */
-.dag-wrap{background:#f8fafc;border:1px solid var(--border);border-radius:8px;position:relative;overflow:hidden}
+.dag-wrap{background:#f8fafc;border:1px solid var(--border);border-radius:8px;position:relative;overflow:hidden;aspect-ratio:2/1;height:auto}
 .dag-wrap svg{display:block;cursor:default}
 .dag-legend{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:.5rem;font-size:.68rem;color:var(--muted)}
 .leg-item{display:flex;align-items:center;gap:4px}
@@ -356,9 +356,9 @@ function renderDAG(svgId, opts = {}) {
   if (!svg) return;
   const wrap = svg.parentElement;
   const W = wrap.clientWidth || 460;
-  const H = parseInt(svg.getAttribute('data-h')) || 260;
-  svg.setAttribute('width', W);
-  svg.setAttribute('height', H);
+  const H = wrap.clientHeight || parseInt(svg.getAttribute('data-h')) || 260;
+  svg.style.width = '100%';
+  svg.style.height = '100%';
   svg.innerHTML = '';
 
   const { stableMap = {}, draggable = false, resetView = false } = opts;
@@ -472,16 +472,28 @@ function startDrag(ev, key, svgId) {
   ev.preventDefault();
   S.dragKey = key;
   const svg = document.getElementById(svgId);
+  if (!svg) return;
+
+  // compute initial mouse position in viewBox coordinates and store offset
+  const r = svg.getBoundingClientRect();
+  const vb = svg.viewBox.baseVal;
+  const mouseVBx = (vb.x || 0) + (ev.clientX - r.left) * ((vb.width || r.width) / r.width);
+  const mouseVBy = (vb.y || 0) + (ev.clientY - r.top) * ((vb.height || r.height) / r.height);
+  const curPos = S.nodePos[key] || { x: mouseVBx, y: mouseVBy };
+  S._dragOffset = { dx: mouseVBx - curPos.x, dy: mouseVBy - curPos.y };
+
   const onMove = e => {
     if (!svg) return;
-    const r = svg.getBoundingClientRect();
-    const vb = svg.viewBox.baseVal;
-    const sx = (vb.width || r.width) / r.width;
-    const sy = (vb.height || r.height) / r.height;
-    S.nodePos[key] = { x: Math.max(25, (e.clientX - r.left) * sx), y: Math.max(25, (e.clientY - r.top) * sy) };
+    const r2 = svg.getBoundingClientRect();
+    const vb2 = svg.viewBox.baseVal;
+    const mouseX = (vb2.x || 0) + (e.clientX - r2.left) * ((vb2.width || r2.width) / r2.width);
+    const mouseY = (vb2.y || 0) + (e.clientY - r2.top) * ((vb2.height || r2.height) / r2.height);
+    const nx = Math.max(25, mouseX - S._dragOffset.dx);
+    const ny = Math.max(25, mouseY - S._dragOffset.dy);
+    S.nodePos[key] = { x: nx, y: ny };
     renderDAG(svgId, { draggable: true, stableMap: S.stableMap });
   };
-  const onUp = () => { S.dragKey = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  const onUp = () => { S.dragKey = null; S._dragOffset = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }
@@ -648,7 +660,7 @@ function renderStep0() {
     <div class="card" style="height:100%;display:flex;flex-direction:column">
       <div class="card-title">Graph Preview</div>
       ${graphControlBar('dag0')}
-      <div class="dag-wrap" style="flex:1;min-height:200px">
+      <div class="dag-wrap" style="flex:1">
         <svg id="dag0" data-h="250"></svg>
       </div>
       <div class="dag-legend">
@@ -754,7 +766,7 @@ function renderStep1() {
         Drag nodes to rearrange. Shift variables (dark squares) are connected by dashed edges.
       </div>
       ${graphControlBar('dag1')}
-      <div class="dag-wrap" style="flex:1;min-height:220px">
+      <div class="dag-wrap" style="flex:1">
         <svg id="dag1" data-h="280"></svg>
       </div>
       <div class="dag-legend">
@@ -815,7 +827,7 @@ function renderQ3Side() {
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">Graph</div>
       ${graphControlBar('dag2')}
-      <div class="dag-wrap" style="min-height:190px">
+      <div class="dag-wrap">
         <svg id="dag2" data-h="195"></svg>
       </div>
       <div class="dag-legend" style="margin-top:.4rem">
@@ -1474,11 +1486,27 @@ function loadExample() {
   S.shiftVars = [{ id: svId, name: 'Screening_Policy', affects: [ids['Weight_Loss']] }];
   S.stableMap[ids['Weight_Loss']] = false;
 
+  // Place nodes on a 2-row x 3-column grid:
+  // Row1: Age, (empty), Screening_Policy
+  // Row2: Smoking, Lung_Cancer, Weight_Loss
+  // Column x positions (approx): 80, 320, 560
+  // Row y positions (approx): 70, 170
+  S.nodePos[ids['Age_SES']] = { x: 80, y: 70 };
+  S.nodePos[ids['Smoking']] = { x: 80, y: 170 };
+  S.nodePos[ids['Lung_Cancer']] = { x: 200, y: 170 };
+  S.nodePos[ids['Weight_Loss']] = { x: 320, y: 170 };
+  // Shift variable square placed at row1,col3
+  S.nodePos['sv_' + svId] = { x: 320, y: 70 };
+
   S.problemCtx = 'Model trained on hospital screening data, to be deployed across settings with varying screening criteria. Screening policy changes may affect which patients are tested and which symptoms are captured.';
   S.structAssump = 'Lung cancer risk is determined by smoking history and background factors (age, occupation, socio-economic status).';
   S.funcAssump = 'The screening policy shift affects the distribution of Weight_Loss (a downstream symptom) but does not change the causal mechanism from Smoking to Lung_Cancer.';
 
   renderAll();
+  // Ensure the graph view is centered and no nodes are off-screen
+  resetGraphView('dag0');
+  resetGraphView('dag1');
+  resetGraphView('dag2');
 }
 
 // ─────────────────────────────────────────────────────────────────────
