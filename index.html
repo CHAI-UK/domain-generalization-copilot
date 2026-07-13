@@ -210,7 +210,7 @@ const S = {
   funcAssump: '',
 
   stableMap: {},  // nodeId → true|false
-  answers: { canAdapt:null, privacyOk:null, sufficientData:null, computeConstr:null, canIsolate:null, canPreprocess:null },
+  answers: { canAdapt:null, privacyOk:null, sufficientData:null, computeConstr:null, canIsolate:null, canIsolateByShift:{}, canPreprocess:null },
 
   verdict: null,  // 'feasible'|'infeasible'|'caveats'
   nodePos: {},    // id/'sv_'+id → {x,y}
@@ -937,7 +937,7 @@ function renderStabilityQ(main, progressBar) {
 
   main.innerHTML = `${progressBar}
   <div class="q-card">
-    <div class="q-label">Question 1 of 7 — Stability Classification</div>
+    <div class="q-label">Stability Classification</div>
     <div class="q-text">Which variables have a <em>stable</em> relationship with the prediction target across deployment environments?</div>
     <div class="q-hint">A relationship is <strong>stable</strong> if it remains consistent across different deployment environments (hospitals, time periods, etc.). Shift variables in your graph suggest potential instability. You can override any pre-suggestion below.</div>
     ${covariates.length === 0
@@ -959,7 +959,7 @@ function setStable(nodeId, isStable) {
 const QUESTIONS = [
   {
     key: 'canAdapt',
-    label: 'Question 2 of 7 — Operational Constraints',
+    label: 'Operational Constraints',
     text: 'Can the model access and use data from the deployment environment to adapt itself?',
     hint: 'This includes test-time adaptation, fine-tuning on deployment data, domain adaptation with unlabelled target data, or continual learning.',
     opts: [
@@ -970,7 +970,7 @@ const QUESTIONS = [
   },
   {
     key: 'privacyOk',
-    label: 'Question 3 of 7 — Privacy Constraints',
+    label: 'Privacy Constraints',
     text: 'Are there privacy or regulatory constraints on the use of deployment-site data?',
     hint: 'For example, GDPR restrictions, data governance policies, or clinical ethics requirements that prevent centralising or storing deployment data.',
     opts: [
@@ -980,7 +980,7 @@ const QUESTIONS = [
   },
   {
     key: 'sufficientData',
-    label: 'Question 4 of 7 — Data Availability',
+    label: 'Data Availability',
     text: 'Is there sufficient training data to learn a robust predictive model?',
     hint: 'Consider whether you have enough labeled examples to train the model reliably. Small datasets limit which methods are feasible.',
     opts: [
@@ -991,7 +991,7 @@ const QUESTIONS = [
   },
   {
     key: 'computeConstr',
-    label: 'Question 5 of 7 — Computational Constraints',
+    label: 'Computational Constraints',
     text: 'Are there strict constraints on inference speed, memory, or compute resources at deployment?',
     hint: 'Some robustness methods (e.g. ensembles, large neural networks) are computationally expensive. If deployment is on edge devices or in real-time clinical settings, this matters.',
     opts: [
@@ -1001,18 +1001,18 @@ const QUESTIONS = [
   },
   {
     key: 'canIsolate',
-    label: 'Question 6 of 7 — Shift Isolation',
-    text: 'Can the effects of shifts be isolated or controlled using adjustment variables, proxies, or known environment indicators?',
-    hint: 'For example: can you observe which hospital or scanner was used? Are there proxy variables for the shift mechanism? Can you use d-separation arguments to identify stable subsets of the graph?',
+    label: 'Shift Isolation',
+    text: 'For each shift variable you defined, can its effects be isolated or controlled using adjustment variables, proxies, or known environment indicators?',
+    hint: 'Select one answer for each shift variable (for example Hospital, Scanner, or Time period). If a shift variable is not observable, choose “No”.',
     opts: [
-      { val: 'yes', label: 'Yes — shift mechanism can be identified/controlled' },
+      { val: 'yes', label: 'Yes — the shift can be identified or controlled' },
       { val: 'unsure', label: 'Possibly — some proxy information is available' },
-      { val: 'no', label: 'No — the shift mechanism is unknown or unobservable' },
+      { val: 'no', label: 'No — the shift is unknown or unobservable' },
     ],
   },
   {
     key: 'canPreprocess',
-    label: 'Question 7 of 7 — Preprocessing Options',
+    label: 'Preprocessing Options',
     text: 'Are there data preprocessing techniques that can reduce the influence of the anticipated shifts?',
     hint: 'Examples include: site-specific normalisation, artifact removal (e.g. scanner harmonisation), de-referencing for signal drift, or known calibration procedures.',
     opts: [
@@ -1023,8 +1023,58 @@ const QUESTIONS = [
   },
 ];
 
+function getCanIsolateSummary() {
+  const entries = Object.values(S.answers.canIsolateByShift || {});
+  if (entries.length === 0) {
+    return S.answers.canIsolate ?? null;
+  }
+  if (entries.some(v => v === 'yes')) return 'yes';
+  if (entries.some(v => v === 'unsure')) return 'unsure';
+  return 'no';
+}
+
+function renderShiftIsolationQ(main, progressBar, q, subStep) {
+  const shiftVars = S.shiftVars;
+  const allAnswered = shiftVars.length === 0 || shiftVars.every(sv => S.answers.canIsolateByShift?.[sv.id] !== undefined && S.answers.canIsolateByShift?.[sv.id] !== null);
+  const itemsHtml = shiftVars.length > 0
+    ? shiftVars.map(sv => {
+        const curVal = S.answers.canIsolateByShift?.[sv.id];
+        return `<div class="card" style="margin-bottom:.7rem;padding:1rem">
+          <div style="font-size:.8rem;font-weight:700;margin-bottom:.45rem">${escHtml(sv.name)}</div>
+          <div class="q-hint" style="margin-bottom:.7rem">How well can the effects of this shift be isolated or controlled?</div>
+          <div class="ans-opts">
+            ${q.opts.map(o => `
+              <div class="ans-opt ${curVal === o.val ? 'sel' : ''}" onclick="selectShiftIsolationAnswer(${sv.id}, '${o.val}')">
+                <div class="ans-radio"></div>
+                <span>${o.label}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="banner banner-warn">No shift variables are defined yet. Add them in Step I to assess isolation for each one.</div>';
+
+  main.innerHTML = `${progressBar}
+  <div class="q-card">
+    <div class="q-label">${q.label}</div>
+    <div class="q-text">${q.text}</div>
+    <div class="q-hint">${q.hint}</div>
+    ${itemsHtml}
+    <div style="margin-top:1rem;display:flex;justify-content:space-between">
+      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Previous</button>
+      <button class="btn btn-c3" onclick="advanceSubStep()" ${allAnswered ? '' : 'disabled'}>
+        ${subStep < 6 ? 'Next Question →' : 'See Feasibility Result →'}
+      </button>
+    </div>
+  </div>`;
+}
+
 function renderSingleQ(main, progressBar, subStep) {
   const q = QUESTIONS[subStep - 1];
+  if (q.key === 'canIsolate') {
+    renderShiftIsolationQ(main, progressBar, q, subStep);
+    return;
+  }
+
   const curVal = S.answers[q.key];
 
   main.innerHTML = `${progressBar}
@@ -1053,6 +1103,12 @@ function selectAnswer(key, val) {
   renderQ3Main();
 }
 
+function selectShiftIsolationAnswer(svId, val) {
+  S.answers.canIsolateByShift[svId] = val;
+  S.answers.canIsolate = getCanIsolateSummary();
+  renderQ3Main();
+}
+
 function advanceSubStep() {
   S.subStep = Math.min(7, S.subStep + 1);
   if (S.subStep === 7) computeVerdict();
@@ -1068,7 +1124,8 @@ function retreatSubStep() {
 function computeVerdict() {
   const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
   const hasStable = stableNodes.length > 0;
-  const canIsolate = S.answers.canIsolate !== 'no';
+  const canIsolateValue = getCanIsolateSummary();
+  const canIsolate = canIsolateValue === 'yes' || canIsolateValue === 'unsure';
   const canPreprocess = S.answers.canPreprocess !== 'no';
   const sufficientData = S.answers.sufficientData !== 'no';
   const canAdapt = S.answers.canAdapt !== 'no';
@@ -1183,7 +1240,7 @@ function renderStep3() {
     </div>
     <div style="font-size:.75rem;color:var(--muted);line-height:1.5">
       ${S.answers.canAdapt !== null ? `<div>Can adapt: <strong>${S.answers.canAdapt}</strong></div>` : ''}
-      ${S.answers.canIsolate !== null ? `<div>Can isolate shift: <strong>${S.answers.canIsolate}</strong></div>` : ''}
+      ${S.answers.canIsolate !== null || Object.keys(S.answers.canIsolateByShift || {}).length > 0 ? `<div>Can isolate shift: <strong>${getCanIsolateSummary() || 'not answered'}</strong></div>` : ''}
       ${S.answers.canPreprocess !== null ? `<div>Preprocessing available: <strong>${S.answers.canPreprocess}</strong></div>` : ''}
     </div>
   </div>
@@ -1219,7 +1276,8 @@ function computeStrategies() {
   const noPrivacy = S.answers.privacyOk === 'no'; // 'no' = no constraints = good
   const sufficientData = S.answers.sufficientData !== 'no';
   const computeOk = S.answers.computeConstr !== 'yes';
-  const canIsolate = S.answers.canIsolate !== 'no';
+  const canIsolateAnswer = getCanIsolateSummary();
+  const canIsolate = canIsolateAnswer === 'yes' || canIsolateAnswer === 'unsure';
   const canPreprocess = S.answers.canPreprocess !== 'no';
 
   if (stableNodes.length > 0) {
