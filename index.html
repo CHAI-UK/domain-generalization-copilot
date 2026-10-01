@@ -937,7 +937,8 @@ function graphControlBar(svgId, editable = false) {
         <button class="btn btn-sm btn-load" type="button" onclick="toggleMenu(this)">Export &#9662;</button>
         <div class="menu">
           <button type="button" onclick="closeMenus();exportGraph('${svgId}','png')">PNG image</button>
-          <button type="button" onclick="closeMenus();exportGraph('${svgId}','pdf')">PDF document</button>
+          <button type="button" onclick="closeMenus();exportGraph('${svgId}','svg')">SVG (vector)</button>
+          <button type="button" onclick="closeMenus();exportGraph('${svgId}','pdf')">PDF (vector)</button>
         </div>
       </div>` : ''}
     </div>
@@ -1931,8 +1932,12 @@ async function loadGraphFile(input) {
   renderAll();
 }
 
-// Render the whole graph (not just the visible area) to a canvas with a white background.
-async function graphToCanvas(svgId, maxScale) {
+// All export formats start from one standalone SVG of the whole graph (not just the visible
+// area) on a white background. PNG rasterises it; PDF translates its shapes to PDF vector
+// drawing commands. Labels use Helvetica so the SVG and PDF look the same on any machine.
+const EXPORT_FONT = 'Helvetica, Arial, sans-serif';
+
+function buildExportSvg(svgId) {
   const svg = document.getElementById(svgId);
   // re-render without the selection highlight / pending edge, then restore
   const sel = S.selected;
@@ -1943,50 +1948,201 @@ async function graphToCanvas(svgId, maxScale) {
 
   const pad = 20;
   const x = bb.x - pad, y = bb.y - pad, w = bb.width + 2 * pad, h = bb.height + 2 * pad;
-  const scale = Math.min(maxScale, 8000 / Math.max(w, h));
+  clone.removeAttribute('id');
+  clone.removeAttribute('style');
+  clone.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));
   clone.setAttribute('xmlns', NS);
   clone.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
-  clone.setAttribute('width', w * scale);
-  clone.setAttribute('height', h * scale);
-  clone.removeAttribute('style');
-  clone.setAttribute('font-family', getComputedStyle(document.body).fontFamily);
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
+  clone.setAttribute('font-family', EXPORT_FONT);
   clone.insertBefore(se('rect', { x, y, width: w, height: h, fill: '#ffffff' }), clone.firstChild);
+  return { svg: clone, x, y, w, h };
+}
 
-  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' }));
+async function svgToCanvas({ svg, w, h }, maxScale) {
+  const scale = Math.min(maxScale, 8000 / Math.max(w, h));
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
   try {
     const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('could not render the graph image')); im.src = url; });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
     canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    return { canvas, w, h };
+    return canvas;
   } finally { URL.revokeObjectURL(url); }
 }
 
-// Minimal single-page PDF holding the canvas as a losslessly compressed RGB image.
-// Page size matches the graph in points (1 graph unit = 1pt).
-async function canvasToPdf(canvas, wPt, hPt) {
-  const W = canvas.width, H = canvas.height;
-  const px = canvas.getContext('2d').getImageData(0, 0, W, H).data;
-  const rgb = new Uint8Array(W * H * 3);
-  for (let i = 0, j = 0; i < px.length; i += 4) { rgb[j++] = px[i]; rgb[j++] = px[i + 1]; rgb[j++] = px[i + 2]; }
-  const zipped = new Uint8Array(await new Response(new Blob([rgb]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+// ── SVG → vector PDF ────────────────────────────────────────────────
+// Handles exactly what renderDAG draws: <g translate>, <rect> (optionally rounded), <circle>,
+// <path> (M/L/Q), <text>, fill/stroke/stroke-width/stroke-dasharray/opacity, and marker-end
+// arrowheads. Text uses the built-in Helvetica-Bold font, so characters outside Latin-1 are
+// replaced by "?".
+const PDF_K = 0.5523; // Bézier constant for circular arcs
 
-  const enc = new TextEncoder(), parts = [], offsets = [];
+function svgPathCommands(d) {
+  const tok = d.match(/[MLQZ]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || [];
+  const cmds = [];
+  for (let i = 0; i < tok.length;) {
+    const c = tok[i++].toUpperCase();
+    const n = c === 'Q' ? 4 : c === 'Z' ? 0 : 2;
+    cmds.push([c, ...tok.slice(i, i + n).map(Number)]);
+    i += n;
+  }
+  return cmds;
+}
+
+function pdfColor(v) {
+  if (!v || v === 'none') return null;
+  let hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v.trim())?.[1];
+  if (!hex) return [0, 0, 0];
+  if (hex.length === 3) hex = hex.replace(/./g, c => c + c);
+  const n = parseInt(hex, 16);
+  return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function pdfWinAnsi(str) {
+  let out = '';
+  for (const ch of str) {
+    const c = ch === '…' ? 0x85 : ch.codePointAt(0);
+    const b = c < 0x20 || c > 0xff || (c >= 0x7f && c < 0xa0 && c !== 0x85) ? 0x3f : c;
+    out += b === 0x28 || b === 0x29 || b === 0x5c ? '\\' + String.fromCharCode(b)
+      : b < 0x80 ? String.fromCharCode(b) : '\\' + b.toString(8).padStart(3, '0');
+  }
+  return out;
+}
+
+function svgToPdfContent({ svg, x: vx, y: vy, h: vh }) {
+  const f = v => (Math.round(v * 1000) / 1000).toString();
+  const ops = [], gstates = new Map();
+  const measure = document.createElement('canvas').getContext('2d');
+  // flip the y axis once, so everything below can use SVG coordinates
+  ops.push(`1 0 0 -1 ${f(-vx)} ${f(vy + vh)} cm`);
+
+  const gsFor = op => {
+    if (!(op < 1)) return '';
+    const key = f(op);
+    if (!gstates.has(key)) gstates.set(key, 'GS' + gstates.size);
+    return `/${gstates.get(key)} gs `;
+  };
+  const paint = (el, pathOps, forceFill) => {
+    const fill = forceFill || pdfColor(el.getAttribute('fill'));
+    const stroke = pdfColor(el.getAttribute('stroke'));
+    if (!fill && !stroke) return;
+    const sw = parseFloat(el.getAttribute('stroke-width') || '1');
+    const dash = el.getAttribute('stroke-dasharray');
+    let s = 'q ' + gsFor(parseFloat(el.getAttribute('opacity') ?? '1'));
+    if (fill) s += `${fill.map(f).join(' ')} rg `;
+    if (stroke) s += `${stroke.map(f).join(' ')} RG ${f(sw)} w ${dash ? `[${dash.split(/[ ,]+/).map(Number).map(f).join(' ')}] 0 d ` : ''}`;
+    ops.push(s + pathOps + (fill && stroke ? ' B' : fill ? ' f' : ' S') + ' Q');
+  };
+  const circleOps = (cx, cy, r) => {
+    const k = r * PDF_K;
+    return `${f(cx + r)} ${f(cy)} m ${f(cx + r)} ${f(cy + k)} ${f(cx + k)} ${f(cy + r)} ${f(cx)} ${f(cy + r)} c ` +
+      `${f(cx - k)} ${f(cy + r)} ${f(cx - r)} ${f(cy + k)} ${f(cx - r)} ${f(cy)} c ` +
+      `${f(cx - r)} ${f(cy - k)} ${f(cx - k)} ${f(cy - r)} ${f(cx)} ${f(cy - r)} c ` +
+      `${f(cx + k)} ${f(cy - r)} ${f(cx + r)} ${f(cy - k)} ${f(cx + r)} ${f(cy)} c h`;
+  };
+  const rectOps = (x, y, w, h, r) => {
+    if (!(r > 0)) return `${f(x)} ${f(y)} ${f(w)} ${f(h)} re`;
+    r = Math.min(r, w / 2, h / 2);
+    const k = r * PDF_K, X = x + w, Y = y + h;
+    return `${f(x + r)} ${f(y)} m ${f(X - r)} ${f(y)} l ${f(X - r + k)} ${f(y)} ${f(X)} ${f(y + r - k)} ${f(X)} ${f(y + r)} c ` +
+      `${f(X)} ${f(Y - r)} l ${f(X)} ${f(Y - r + k)} ${f(X - r + k)} ${f(Y)} ${f(X - r)} ${f(Y)} c ` +
+      `${f(x + r)} ${f(Y)} l ${f(x + r - k)} ${f(Y)} ${f(x)} ${f(Y - r + k)} ${f(x)} ${f(Y - r)} c ` +
+      `${f(x)} ${f(y + r)} l ${f(x)} ${f(y + r - k)} ${f(x + r - k)} ${f(y)} ${f(x + r)} ${f(y)} c h`;
+  };
+  const arrowhead = (el, end, angle) => {
+    const id = /url\(#([^)]+)\)/.exec(el.getAttribute('marker-end') || '')?.[1];
+    const marker = id && svg.querySelector(`marker[id="${id}"]`);
+    const mp = marker?.querySelector('path');
+    if (!mp) return;
+    const vb = (marker.getAttribute('viewBox') || '0 0 10 10').split(/[ ,]+/).map(Number);
+    const k = parseFloat(marker.getAttribute('markerWidth') || '3') / vb[2] * parseFloat(el.getAttribute('stroke-width') || '1');
+    const rx = parseFloat(marker.getAttribute('refX') || '0'), ry = parseFloat(marker.getAttribute('refY') || '0');
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const pt = (px, py) => { const a = (px - rx) * k, b = (py - ry) * k; return `${f(end.x + a * cos - b * sin)} ${f(end.y + a * sin + b * cos)}`; };
+    const d = svgPathCommands(mp.getAttribute('d')).map(([c, ...a]) => c === 'M' ? `${pt(a[0], a[1])} m` : c === 'L' ? `${pt(a[0], a[1])} l` : c === 'Z' ? 'h' : '').join(' ');
+    const fakeEl = { getAttribute: n => n === 'opacity' ? el.getAttribute('opacity') : null };
+    paint(fakeEl, d + ' h', pdfColor(mp.getAttribute('fill')));
+  };
+
+  const walk = (node, ox, oy) => {
+    for (const el of node.children) {
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'defs' || tag === 'title' || tag === 'marker') continue;
+      if (tag === 'g') {
+        const m = /translate\(\s*([-\d.e]+)[ ,]+([-\d.e]+)\s*\)/.exec(el.getAttribute('transform') || '');
+        walk(el, ox + (m ? +m[1] : 0), oy + (m ? +m[2] : 0));
+      } else if (tag === 'rect') {
+        const n = a => parseFloat(el.getAttribute(a) || '0');
+        paint(el, rectOps(ox + n('x'), oy + n('y'), n('width'), n('height'), n('rx')));
+      } else if (tag === 'circle') {
+        const n = a => parseFloat(el.getAttribute(a) || '0');
+        paint(el, circleOps(ox + n('cx'), oy + n('cy'), n('r')));
+      } else if (tag === 'path' || tag === 'line') {
+        const cmds = tag === 'line'
+          ? [['M', +el.getAttribute('x1'), +el.getAttribute('y1')], ['L', +el.getAttribute('x2'), +el.getAttribute('y2')]]
+          : svgPathCommands(el.getAttribute('d') || '');
+        let cur = { x: 0, y: 0 }, prev = cur, d = '';
+        cmds.forEach(([c, ...a]) => {
+          if (c === 'M') { cur = { x: ox + a[0], y: oy + a[1] }; d += `${f(cur.x)} ${f(cur.y)} m `; }
+          else if (c === 'L') { prev = cur; cur = { x: ox + a[0], y: oy + a[1] }; d += `${f(cur.x)} ${f(cur.y)} l `; }
+          else if (c === 'Q') {
+            // quadratic → cubic
+            const q = { x: ox + a[0], y: oy + a[1] }, e = { x: ox + a[2], y: oy + a[3] };
+            const c1 = { x: cur.x + 2 / 3 * (q.x - cur.x), y: cur.y + 2 / 3 * (q.y - cur.y) };
+            const c2 = { x: e.x + 2 / 3 * (q.x - e.x), y: e.y + 2 / 3 * (q.y - e.y) };
+            d += `${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(e.x)} ${f(e.y)} c `;
+            prev = q; cur = e;
+          } else if (c === 'Z') d += 'h ';
+        });
+        paint(el, d.trim());
+        if (el.getAttribute('marker-end')) arrowhead(el, cur, Math.atan2(cur.y - prev.y, cur.x - prev.x));
+      } else if (tag === 'text') {
+        const text = el.textContent;
+        if (!text) continue;
+        const size = parseFloat(el.getAttribute('font-size') || '12');
+        measure.font = `bold ${size}px ${EXPORT_FONT}`;
+        const width = measure.measureText(text).width;
+        const anchor = el.getAttribute('text-anchor');
+        const tx = ox + parseFloat(el.getAttribute('x') || '0') - (anchor === 'middle' ? width / 2 : anchor === 'end' ? width : 0);
+        const ty = oy + parseFloat(el.getAttribute('y') || '0') + (el.getAttribute('dominant-baseline') === 'central' ? size * 0.35 : 0);
+        const fill = pdfColor(el.getAttribute('fill') || '#000000'), halo = pdfColor(el.getAttribute('stroke'));
+        // text matrix flips y back so glyphs are upright under the page flip
+        const show = mode => `BT /F1 ${f(size)} Tf ${mode} Tr 1 0 0 -1 ${f(tx)} ${f(ty)} Tm (${pdfWinAnsi(text)}) Tj ET`;
+        // the halo is decoration: give it empty ActualText so copied / searched text isn't doubled
+        if (halo) ops.push(`/Span << /ActualText () >> BDC q ${halo.map(f).join(' ')} RG ${f(parseFloat(el.getAttribute('stroke-width') || '1'))} w 1 j ${show(1)} Q EMC`);
+        if (fill) ops.push(`q ${fill.map(f).join(' ')} rg ${show(0)} Q`);
+      }
+    }
+  };
+  walk(svg, 0, 0);
+
+  const gsDict = [...gstates].map(([op, name]) => `/${name} << /Type /ExtGState /CA ${op} /ca ${op} >>`).join(' ');
+  return { content: ops.join('\n'), extGState: gsDict };
+}
+
+async function svgToPdf(exp) {
+  const { content, extGState } = svgToPdfContent(exp);
+  const enc = new TextEncoder();
+  const zipped = new Uint8Array(await new Response(new Blob([enc.encode(content)]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+  const wp = exp.w.toFixed(2), hp = exp.h.toFixed(2);
+
+  const parts = [], offsets = [];
   let len = 0;
   const put = d => { const b = typeof d === 'string' ? enc.encode(d) : d; parts.push(b); len += b.length; };
   const obj = (n, body) => { offsets[n] = len; put(`${n} 0 obj\n${body}\nendobj\n`); };
-  const wp = wPt.toFixed(2), hp = hPt.toFixed(2);
-  const content = `q ${wp} 0 0 ${hp} 0 0 cm /Im0 Do Q`;
 
   put('%PDF-1.4\n');
   obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
   obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wp} ${hp}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wp} ${hp}] /Contents 4 0 R ` +
+    `/Resources << /Font << /F1 5 0 R >>${extGState ? ` /ExtGState << ${extGState} >>` : ''} >> >>`);
   offsets[4] = len;
-  put(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${zipped.length} >>\nstream\n`);
+  put(`4 0 obj\n<< /Length ${zipped.length} /Filter /FlateDecode >>\nstream\n`);
   put(zipped);
   put('\nendstream\nendobj\n');
-  obj(5, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  obj(5, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
   const xref = len;
   put(`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('')}`);
   put(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
@@ -1996,9 +2152,16 @@ async function canvasToPdf(canvas, wPt, hPt) {
 async function exportGraph(svgId, kind) {
   if (S.nodes.length === 0) { showGraphError('Nothing to export — the graph is empty.'); return; }
   try {
-    const { canvas, w, h } = await graphToCanvas(svgId, kind === 'pdf' ? 4 : 3);
-    if (kind === 'png') downloadBlob(await new Promise(res => canvas.toBlob(res, 'image/png')), 'causal-graph.png');
-    else downloadBlob(await canvasToPdf(canvas, w, h), 'causal-graph.pdf');
+    const exp = buildExportSvg(svgId);
+    if (kind === 'svg') {
+      const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(exp.svg);
+      downloadBlob(new Blob([xml], { type: 'image/svg+xml' }), 'causal-graph.svg');
+    } else if (kind === 'png') {
+      const canvas = await svgToCanvas(exp, 3);
+      downloadBlob(await new Promise(res => canvas.toBlob(res, 'image/png')), 'causal-graph.png');
+    } else {
+      downloadBlob(await svgToPdf(exp), 'causal-graph.pdf');
+    }
   } catch (e) {
     showGraphError('Export failed: ' + (e?.message || e));
   }
