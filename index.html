@@ -360,7 +360,9 @@ function findFreeSpot(c) {
 
 // Layered (Sugiyama-style) layout in graph coordinates. Only nodes without a stored
 // position are placed, so manual arrangements survive; Auto-layout clears them all.
-const LAYER_GAP = 150, SLOT_GAP = 100;
+// SLOT_GAP is the vertical room a node takes in its column; dummy slots (edges passing
+// through a column) only need enough room to keep the edge clear of neighbouring nodes.
+const LAYER_GAP = 120, SLOT_GAP = 70, DUMMY_GAP = 24;
 
 function computeLayout() {
   const pos = {};
@@ -370,8 +372,11 @@ function computeLayout() {
     return pos;
   }
 
-  // 1. Longest-path layering of the ordinary variables
-  const vars = varNodes();
+  // 1. Longest-path layering of the ordinary variables. Variables with no edges at all
+  //    are set aside and packed into a row underneath instead of lengthening a column.
+  const connected = new Set(S.edges.flatMap(e => [e.from, e.to]));
+  const loose = varNodes().filter(n => !connected.has(n.id));
+  const vars = varNodes().filter(n => connected.has(n.id));
   const layerOf = {}, preds = {};
   vars.forEach(n => preds[n.id] = []);
   const varEdges = S.edges.filter(e => preds[e.from] !== undefined && preds[e.to] !== undefined);
@@ -416,25 +421,70 @@ function computeLayout() {
 
   // 4. Vertical coordinates: pull each slot towards its neighbours, keeping the
   //    layer order and a minimum gap between slots
+  //    The pull is damped and each column is re-centred, so columns don't drift apart.
+  const gap = (a, b) => ((typeof a === 'string' ? DUMMY_GAP : SLOT_GAP) + (typeof b === 'string' ? DUMMY_GAP : SLOT_GAP)) / 2;
+  const pack = layer => {
+    const got = [0];
+    for (let i = 1; i < layer.length; i++) got[i] = got[i - 1] + gap(layer[i - 1], layer[i]);
+    return got.map(v => v - got[got.length - 1] / 2);
+  };
   const y = {};
-  layers.forEach(layer => layer.forEach((k, i) => y[k] = (i - (layer.length - 1) / 2) * SLOT_GAP));
-  for (let it = 0; it < 6; it++) {
+  layers.forEach(layer => pack(layer).forEach((v, i) => y[layer[i]] = v));
+  for (let it = 0; it < 4; it++) {
     layers.forEach(layer => {
       const want = layer.map(k => {
         const nb = [...(up[k] || []), ...(down[k] || [])];
-        return nb.length ? nb.reduce((a, b) => a + y[b], 0) / nb.length : y[k];
+        return nb.length ? 0.5 * y[k] + 0.5 * nb.reduce((a, b) => a + y[b], 0) / nb.length : y[k];
       });
       const got = [...want];
-      for (let i = 1; i < got.length; i++) got[i] = Math.max(got[i], got[i - 1] + SLOT_GAP);
-      const shift = want.reduce((a, b) => a + b, 0) / want.length - got.reduce((a, b) => a + b, 0) / got.length;
-      layer.forEach((k, i) => y[k] = got[i] + shift);
+      for (let i = 1; i < got.length; i++) got[i] = Math.max(got[i], got[i - 1] + gap(layer[i - 1], layer[i]));
+      const mid = (got[0] + got[got.length - 1]) / 2;
+      layer.forEach((k, i) => y[k] = got[i] - mid);
     });
+  }
+
+  // 4b. Edges are drawn straight, so move any node lying close to an edge that skips
+  //     over its column off that line (pushing its column neighbours along)
+  const CLEAR = 36;
+  const nudge = (layer, i, dy) => {
+    y[layer[i]] += dy;
+    for (let j = i + 1; j < layer.length; j++) y[layer[j]] = Math.max(y[layer[j]], y[layer[j - 1]] + gap(layer[j - 1], layer[j]));
+    for (let j = i - 1; j >= 0; j--) y[layer[j]] = Math.min(y[layer[j]], y[layer[j + 1]] - gap(layer[j], layer[j + 1]));
+  };
+  for (let it = 0; it < 6; it++) {
+    let moved = false;
+    varEdges.forEach(e => {
+      const l0 = layerOf[e.from], l1 = layerOf[e.to];
+      for (let l = l0 + 1; l < l1; l++) {
+        const lineY = y[e.from] + (y[e.to] - y[e.from]) * (l - l0) / (l1 - l0);
+        layers[l].forEach((k, i) => {
+          if (typeof k === 'string') return;
+          const d = y[k] - lineY;
+          if (Math.abs(d) >= CLEAR) return;
+          // move towards whichever side has more room in the column
+          const roomUp = i === 0 ? Infinity : y[k] - y[layers[l][i - 1]];
+          const roomDown = i === layers[l].length - 1 ? Infinity : y[layers[l][i + 1]] - y[k];
+          const dir = d !== 0 ? Math.sign(d) : roomDown >= roomUp ? 1 : -1;
+          nudge(layers[l], i, dir * (CLEAR - Math.abs(d)));
+          moved = true;
+        });
+      }
+    });
+    if (!moved) break;
   }
   const auto = {};
   vars.forEach(n => auto[n.id] = { x: layerOf[n.id] * LAYER_GAP, y: y[n.id] });
 
-  // 5. Shift variables sit above the nodes they affect, nudged sideways if the spot is taken
-  const near = (p, list) => list.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 70);
+  // 5. Variables without edges: a compact grid below everything else
+  if (loose.length) {
+    const ys = Object.values(auto).map(p => p.y);
+    const bottom = ys.length ? Math.max(...ys) + SLOT_GAP : 0;
+    const perRow = Math.max(4, nL + 1);
+    loose.forEach((n, i) => auto[n.id] = { x: (i % perRow) * LAYER_GAP * 0.75, y: bottom + Math.floor(i / perRow) * SLOT_GAP });
+  }
+
+  // 6. Shift variables sit just above the nodes they affect, nudged sideways if the spot is taken
+  const near = (p, list) => list.some(q => Math.hypot(q.x - p.x, q.y - p.y) < SLOT_GAP * 0.8);
   shiftVars().forEach(sv => {
     const kids = sv.affects.map(id => S.nodePos[id] || auto[id]).filter(Boolean);
     const all = Object.values(auto);
@@ -640,7 +690,8 @@ function renderDAG(svgId, opts = {}) {
 }
 
 // Pick below / above / right / left for a node's label: whichever points furthest away from
-// the node's own edges and from any other edge passing close by (ties go to "below").
+// the node's own edges, any other edge passing close by, and neighbouring nodes (whose
+// labels compete for the same gap). Ties go to "below".
 const LABEL_SIDES = [{ x: 0, y: 1 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 }];
 function labelSide(id, pos, routes) {
   const p = pos[id];
@@ -649,6 +700,10 @@ function labelSide(id, pos, routes) {
   routes.forEach(({ e, route }) => {
     if (e.from === id || e.to === id) dirs.push(unit(route.bend ? route.c : pos[e.from === id ? e.to : e.from]));
     else route.pts.forEach(q => { if (Math.hypot(q.x - p.x, q.y - p.y) < 50) dirs.push(unit(q)); });
+  });
+  S.nodes.forEach(n => {
+    const q = pos[n.id];
+    if (n.id !== id && q && Math.hypot(q.x - p.x, q.y - p.y) < 80) dirs.push(unit(q));
   });
   if (!dirs.length) return LABEL_SIDES[0];
   let best = LABEL_SIDES[0], bestScore = Infinity;
