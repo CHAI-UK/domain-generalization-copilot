@@ -187,7 +187,11 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 /* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--border);padding:.7rem 1.5rem;display:flex;justify-content:space-between;align-items:center;z-index:100;gap:.75rem}
 .nav-left,.nav-right{display:flex;gap:.5rem;align-items:center}
-.err-toast{font-size:.73rem;color:#dc2626}</style>
+.err-toast{font-size:.73rem;color:#dc2626}
+
+/* SAVE DIALOG */
+dialog{margin:auto;border:1px solid var(--border);border-radius:10px;padding:1.25rem;width:min(380px,90vw);background:var(--surf);color:var(--text);box-shadow:0 10px 30px rgba(15,23,42,.2)}
+dialog::backdrop{background:rgba(15,23,42,.35)}</style>
 </head>
 <body>
 
@@ -208,6 +212,17 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 </main>
 
 <input type="file" id="i-loadfile" accept=".json,application/json" style="display:none" onchange="loadGraphFile(this)">
+
+<dialog id="save-dlg">
+  <form onsubmit="event.preventDefault();confirmSave()">
+    <div class="card-title">Save Graph</div>
+    <div class="field"><label for="i-savename">File name</label><input type="text" id="i-savename" spellcheck="false"></div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn btn-dark btn-sm">OK</button>
+    </div>
+  </form>
+</dialog>
 <div class="bottom-nav">
   <div class="nav-left">
     <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)">&#8592; Back</button>
@@ -250,7 +265,7 @@ const S = {
   mousePt: null,  // cursor in graph coordinates, for the pending-edge line
   annotate: false,// Stage I editor mode: false = edit the graph, true = annotate nodes/edges
   noteSel: null,  // item being annotated: {node:id} | {edge:[from,to]}
-  file: { name: null }, // name of the file the graph was loaded from (reused by Save)
+  file: { name: null }, // file name last loaded or saved (pre-fills the Save window)
 };
 
 const isShift = n => n.type === 'shift';
@@ -974,7 +989,7 @@ function graphControlBar(svgId, editable = false) {
           ${EXAMPLES.map((ex, i) => `<button type="button" onclick="closeMenus();loadExample(${i})" title="${escHtml(ex.description)}">${escHtml(ex.name)}</button>`).join('')}
         </div>
       </div>
-      <button class="btn btn-sm btn-load" type="button" onclick="saveGraphFile()" title="Download the graph as a JSON file">Save</button>
+      <button class="btn btn-sm btn-load" type="button" onclick="saveGraphFile()" title="Download the graph as a JSON file">Save&hellip;</button>
       <div class="menu-wrap">
         <button class="btn btn-sm btn-load" type="button" onclick="toggleMenu(this)">Export &#9662;</button>
         <div class="menu">
@@ -1996,12 +2011,26 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Files are saved as browser downloads, named after the file the graph was loaded from
-// (if any) so that a load / edit / save round trip keeps its name.
+// Save opens a small window asking for a file name, then downloads the graph under it.
+// The name is pre-filled with the file last loaded or saved, so a load / edit / save round
+// trip keeps its name. The window is our own <dialog>, since window.prompt() is ignored
+// by some embedded browsers.
 const DEFAULT_FILENAME = 'causal-graph.json';
 
 function saveGraphFile() {
-  const name = S.file.name || DEFAULT_FILENAME;
+  const input = document.getElementById('i-savename');
+  input.value = S.file.name || DEFAULT_FILENAME;
+  document.getElementById('save-dlg').showModal();
+  input.focus();
+  input.setSelectionRange(0, input.value.replace(/\.json$/i, '').length);
+}
+
+function confirmSave() {
+  let name = document.getElementById('i-savename').value.trim();
+  if (!name) return;
+  if (!/\.json$/i.test(name)) name += '.json';
+  document.getElementById('save-dlg').close();
+  S.file = { name };
   downloadBlob(new Blob([JSON.stringify(graphToJSON(), null, 2)], { type: 'application/json' }), name);
   showGraphInfo(`Saved as ${name}`);
 }
