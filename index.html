@@ -186,7 +186,6 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 
 /* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--border);padding:.7rem 1.5rem;display:flex;justify-content:space-between;align-items:center;z-index:100;gap:.75rem}
-.nav-center{font-size:.75rem;color:var(--muted);text-align:center;flex:1}
 .nav-left,.nav-right{display:flex;gap:.5rem;align-items:center}
 .err-toast{font-size:.73rem;color:#dc2626}</style>
 </head>
@@ -213,7 +212,6 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
   <div class="nav-left">
     <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)">&#8592; Back</button>
   </div>
-  <div class="nav-center" id="nav-hint"></div>
   <div class="nav-right">
     <span class="err-toast" id="nav-err"></span>
     <button class="btn btn-dark" id="btn-next" onclick="navigate(1)">Next &#8594;</button>
@@ -1863,7 +1861,6 @@ function renderAll() {
   // Update bottom nav
   const btnBack = document.getElementById('btn-back');
   const btnNext = document.getElementById('btn-next');
-  const navHint = document.getElementById('nav-hint');
 
   btnBack.disabled = (S.step === 0 && S.subStep === 0);
 
@@ -1881,13 +1878,6 @@ function renderAll() {
     }
   }
 
-  const hints = [
-    'Build the causal graph: variables, shift variables and prediction target',
-    'Record causal assumptions',
-    `Feasibility analysis — question ${S.subStep + 1} of 8`,
-    'Review recommended deployment strategies',
-  ];
-  navHint.textContent = hints[S.step];
   setNavErr('');
 }
 
