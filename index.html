@@ -223,6 +223,17 @@ dialog::backdrop{background:rgba(15,23,42,.35)}</style>
     </div>
   </form>
 </dialog>
+
+<dialog id="replace-dlg">
+  <form onsubmit="event.preventDefault();confirmReplace()">
+    <div class="card-title">Are you sure?</div>
+    <p style="font-size:.82rem;line-height:1.55">This will replace the current graph. Any unsaved changes will be lost.</p>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn btn-dark btn-sm">OK</button>
+    </div>
+  </form>
+</dialog>
 <div class="bottom-nav">
   <div class="nav-left">
     <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)">&#8592; Back</button>
@@ -983,10 +994,11 @@ function graphControlBar(svgId, editable = false) {
       <div class="menu-wrap">
         <button class="btn btn-sm btn-load" type="button" onclick="toggleMenu(this)">Load &#9662;</button>
         <div class="menu">
-          <button type="button" onclick="closeMenus();document.getElementById('i-loadfile').click()">Load from File&hellip;</button>
+          <button type="button" onclick="closeMenus();confirmReplaceGraph(() => document.getElementById('i-loadfile').click())">Load from File&hellip;</button>
+          <button type="button" onclick="closeMenus();confirmReplaceGraph(resetGraph)">Reset graph</button>
           <div class="menu-sep"></div>
           <div class="menu-head">Examples</div>
-          ${EXAMPLES.map((ex, i) => `<button type="button" onclick="closeMenus();loadExample(${i})" title="${escHtml(ex.description)}">${escHtml(ex.name)}</button>`).join('')}
+          ${EXAMPLES.map((ex, i) => `<button type="button" onclick="closeMenus();confirmReplaceGraph(() => loadExample(${i}))" title="${escHtml(ex.description)}">${escHtml(ex.name)}</button>`).join('')}
         </div>
       </div>
       <button class="btn btn-sm btn-load" type="button" onclick="saveGraphFile()" title="Download the graph as a JSON file">Save&hellip;</button>
@@ -1931,6 +1943,29 @@ function loadExample(i = 0) {
   S.file = { name: null }; // an example is a new, unsaved graph
   ex.after?.();
   renderAll();
+}
+
+function resetGraph() {
+  applyGraph({ nodes: [], edges: [] });
+  S.file = { name: null };
+  renderAll();
+}
+
+// Anything that replaces the graph (reset, example, file) asks first, unless the graph is
+// empty and there is nothing to lose. Uses our own <dialog>, like the Save window.
+let pendingReplace = null;
+
+function confirmReplaceGraph(then) {
+  if (S.nodes.length === 0) { then(); return; }
+  pendingReplace = then;
+  document.getElementById('replace-dlg').showModal();
+}
+
+function confirmReplace() {
+  document.getElementById('replace-dlg').close();
+  const then = pendingReplace;
+  pendingReplace = null;
+  then?.();
 }
 
 // ─────────────────────────────────────────────────────────────────────
