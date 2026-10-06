@@ -96,6 +96,11 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .menu-head{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.3rem .6rem .15rem}
 .dag-status{font-size:.72rem;color:var(--muted);letter-spacing:.02em;text-align:right;line-height:1.4}
 .dag-status.err{color:#dc2626;font-weight:600}
+.mode-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.mode-toggle button{border:none;background:transparent;padding:.22rem .65rem;font-size:.72rem;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+.mode-toggle button.on{background:#0f172a;color:#fff}
+.dag-wrap.annotating{border-color:#fcd34d;background:#fffdf5}
+.note-subject{font-size:.85rem;font-weight:700;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 
 /* STAGE I GRAPH BUILDER */
 .builder{display:grid;grid-template-columns:300px minmax(0,1fr);gap:1rem;align-items:start}
@@ -183,8 +188,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surf);border-top:1px solid var(--border);padding:.7rem 1.5rem;display:flex;justify-content:space-between;align-items:center;z-index:100;gap:.75rem}
 .nav-center{font-size:.75rem;color:var(--muted);text-align:center;flex:1}
 .nav-left,.nav-right{display:flex;gap:.5rem;align-items:center}
-.err-toast{font-size:.73rem;color:#dc2626}
-</style>
+.err-toast{font-size:.73rem;color:#dc2626}</style>
 </head>
 <body>
 
@@ -205,7 +209,6 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 </main>
 
 <input type="file" id="i-loadfile" accept=".json,application/json" style="display:none" onchange="loadGraphFile(this)">
-
 <div class="bottom-nav">
   <div class="nav-left">
     <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)">&#8592; Back</button>
@@ -229,8 +232,8 @@ const S = {
   step: 0,    // 0=ProblemConceptualization, 1=CausalDesc, 2=Feasibility, 3=Strategies
   subStep: 0, // Within step 2: 0=stability, 1..6=questions, 7=verdict
 
-  nodes: [],      // {id,name,type:'observed'|'latent'|'target'|'shift'}
-  edges: [],      // {from,to} — edges out of a shift node are shift edges
+  nodes: [],      // {id,name,type:'observed'|'latent'|'target'|'shift',note?}
+  edges: [],      // {from,to,note?} — edges out of a shift node are shift edges
 
   structAssump: '',
   funcAssump: '',
@@ -247,6 +250,9 @@ const S = {
   graphMsg: '',   // transient error shown in the Stage I graph toolbar
   lastClick: null,// {key,t} for double-click detection
   mousePt: null,  // cursor in graph coordinates, for the pending-edge line
+  annotate: false,// Stage I editor mode: false = edit the graph, true = annotate nodes/edges
+  noteSel: null,  // item being annotated: {node:id} | {edge:[from,to]}
+  file: { name: null }, // name of the file the graph was loaded from (reused by Save)
 };
 
 const isShift = n => n.type === 'shift';
@@ -591,6 +597,9 @@ function renderDAG(svgId, opts = {}) {
 
   const { stableMap = {}, draggable = false, editable = false, resetView = false } = opts;
   const NR = 16, SQ = 14;
+  // annotate mode: note icons, clickable edges and the highlighted item only show in the editor
+  const annot = editable && S.annotate;
+  const noteSelItem = annot ? noteItem() : null;
 
   if (!svg.__graphAttached) {
     svg.addEventListener('mousedown', ev => onSvgMouseDown(ev, svgId));
@@ -625,7 +634,7 @@ function renderDAG(svgId, opts = {}) {
 
   // Edges (dashed when they leave a shift variable)
   const byId = Object.fromEntries(S.nodes.map(n => [n.id, n]));
-  const routes = [], bends = {};
+  const routes = [], bends = {}, edgeNotes = [];
   S.edges.forEach(e => {
     const s = pos[e.from], d = pos[e.to];
     if (!s || !d) return;
@@ -634,13 +643,25 @@ function renderDAG(svgId, opts = {}) {
     const route = edgeRoute(s, d, shift ? SQ + 3 : NR + 2, NR + 7, obstacles, NR + 8, [...(bends[e.from] || []), ...(bends[e.to] || [])]);
     if (route.bend) [e.from, e.to].forEach(id => (bends[id] = bends[id] || []).push(route.bend));
     routes.push({ e, route });
+    const picked = noteSelItem === e;
     const path = se('path', {
       d: route.d,
-      fill: 'none', stroke: shift ? '#475569' : '#94a3b8', 'stroke-width': 1.5,
-      'marker-end': `url(#${svgId}${shift ? 'sarr' : 'arr'})`, opacity: shift ? .85 : .75,
+      fill: 'none', stroke: picked ? '#ea580c' : shift ? '#475569' : '#94a3b8', 'stroke-width': picked ? 2.5 : 1.5,
+      'marker-end': `url(#${svgId}${picked ? 'parr' : shift ? 'sarr' : 'arr'})`, opacity: picked ? 1 : shift ? .85 : .75,
     });
     if (shift) path.setAttribute('stroke-dasharray', '6,3');
     svg.appendChild(path);
+    if (annot) {
+      // wide invisible stroke so thin edges are easy to click
+      const hit = se('path', { d: route.d, fill: 'none', stroke: 'transparent', 'stroke-width': 12, 'data-hit': 1 });
+      hit.style.cursor = 'pointer';
+      hit.addEventListener('click', () => openNote({ edge: [e.from, e.to] }));
+      svg.appendChild(hit);
+      if (hasNote(e)) {
+        const c = route.bend ? route.c : { x: (s.x + d.x) / 2, y: (s.y + d.y) / 2 };
+        edgeNotes.push({ e, x: 0.25 * s.x + 0.5 * c.x + 0.25 * d.x, y: 0.25 * s.y + 0.5 * c.y + 0.25 * d.y });
+      }
+    }
   });
 
   // Rubber-band edge from the selected node to the cursor
@@ -659,7 +680,7 @@ function renderDAG(svgId, opts = {}) {
     const p = pos[nd.id];
     if (!p) return;
     const g = se('g', { transform: `translate(${p.x},${p.y})` });
-    const selected = editable && S.selected === nd.id;
+    const selected = (editable && S.selected === nd.id) || noteSelItem === nd;
 
     if (isShift(nd)) {
       if (selected) g.appendChild(se('rect', { x: -SQ - 6, y: -SQ - 6, width: (SQ + 6) * 2, height: (SQ + 6) * 2, rx: 6, fill: 'none', stroke: '#ea580c', 'stroke-width': 3 }));
@@ -692,10 +713,25 @@ function renderDAG(svgId, opts = {}) {
     lbl.textContent = nd.name.length > 20 ? nd.name.slice(0, 19) + '…' : nd.name;
     const tt = se('title'); tt.textContent = nd.name + ({ latent: ' (latent)', target: ' (prediction target)', shift: ' (shift variable)' }[nd.type] || '');
     g.appendChild(tt); g.appendChild(lbl);
+    if (annot && hasNote(nd)) g.appendChild(noteIcon(r + 1, -r - 1));
 
-    if (draggable) { g.style.cursor = 'grab'; g.addEventListener('mousedown', ev => startDrag(ev, nd.id, svgId)); }
+    if (draggable) { g.style.cursor = annot ? 'pointer' : 'grab'; g.addEventListener('mousedown', ev => startDrag(ev, nd.id, svgId)); }
     svg.appendChild(g);
   });
+
+  // Edge note icons go on top of everything so nodes never hide them
+  edgeNotes.forEach(({ e, x, y }) => {
+    const icon = noteIcon(x, y);
+    icon.setAttribute('data-hit', 1);
+    icon.style.cursor = 'pointer';
+    icon.addEventListener('click', () => openNote({ edge: [e.from, e.to] }));
+    svg.appendChild(icon);
+  });
+}
+
+// Small yellow "sticky note" square centred on (x, y), marking an item that has a note
+function noteIcon(x, y) {
+  return se('rect', { x: x - 4.5, y: y - 4.5, width: 9, height: 9, rx: 1.5, fill: '#fde047', stroke: '#a16207', 'stroke-width': 1 });
 }
 
 // Pick below / above / right / left for a node's label: whichever points furthest away from
@@ -782,7 +818,7 @@ function setHomeView(svgId, pos, W, H) {
 
 function onSvgMouseDown(ev, svgId) {
   if (ev.button !== 0 || S.dragKey) return;
-  if (ev.target.closest('g')) return;
+  if (ev.target.closest('g,[data-hit]')) return;
   const svg = document.getElementById(svgId);
   if (!svg) return;
   ev.preventDefault();
@@ -876,6 +912,7 @@ function isDoubleClick(key) {
 
 function onNodeClick(id, svgId) {
   S.graphMsg = '';
+  if (S.annotate) { openNote({ node: id }); return; }
   if (isDoubleClick(id)) {
     S.selected = S.selected === id ? null : id;
     S.mousePt = null;
@@ -892,6 +929,7 @@ function onNodeClick(id, svgId) {
 
 function onBackgroundClick(pt, svgId) {
   S.graphMsg = '';
+  if (S.annotate) { if (S.noteSel) openNote(null); else rerenderDAG(svgId); return; }
   if (isDoubleClick('bg')) { S.selected = null; addNode(genericName(), 'observed', pt); return; }
   if (S.selected !== null) S.selected = null;
   syncSelection(svgId);
@@ -909,6 +947,7 @@ function updateGraphStatus(svgId) {
   const sel = S.nodes.find(n => n.id === S.selected);
   el.classList.toggle('err', !!S.graphMsg);
   if (S.graphMsg) el.textContent = S.graphMsg;
+  else if (S.annotate) el.innerHTML = GRAPH_HELP.annotate;
   else if (sel) el.innerHTML = `Drawing edge from <strong>${escHtml(sel.name)}</strong> — click a target node &bull; Esc to cancel &bull; Del to delete node`;
   else el.innerHTML = GRAPH_HELP.editable;
 }
@@ -916,11 +955,16 @@ function updateGraphStatus(svgId) {
 const GRAPH_HELP = {
   editable: 'Double-click space: new node &bull; double-click a node, then click another: new edge &bull; drag to move / pan &bull; scroll to zoom',
   view: 'Scroll to zoom &bull; drag empty space to pan &bull; drag nodes to move',
+  annotate: 'Click a node or edge to write a note about it &bull; drag to move / pan &bull; scroll to zoom',
 };
 
 function graphControlBar(svgId, editable = false) {
   return `<div class="dag-controls">
     <div style="display:flex;gap:.4rem;flex-shrink:0;flex-wrap:wrap">
+      ${editable ? `<div class="mode-toggle">
+        <button type="button" class="${S.annotate ? '' : 'on'}" onclick="setAnnotate(false)" title="Add, connect and remove nodes">Edit</button>
+        <button type="button" class="${S.annotate ? 'on' : ''}" onclick="setAnnotate(true)" title="Write notes on nodes and edges">Annotate</button>
+      </div>` : ''}
       <button class="btn btn-sm btn-ghost" type="button" onclick="resetGraphView('${svgId}')">Reset View</button>
       ${editable ? `<button class="btn btn-sm btn-ghost" type="button" onclick="autoLayout('${svgId}')" title="Re-arrange all nodes automatically">Auto-layout</button>
       <div class="menu-wrap">
@@ -942,7 +986,59 @@ function graphControlBar(svgId, editable = false) {
         </div>
       </div>` : ''}
     </div>
-    <div class="dag-status" id="${svgId}-status">${editable ? GRAPH_HELP.editable : GRAPH_HELP.view}</div>
+    <div class="dag-status" id="${svgId}-status">${editable ? (S.annotate ? GRAPH_HELP.annotate : GRAPH_HELP.editable) : GRAPH_HELP.view}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// STAGE I GRAPH ANNOTATOR
+// ─────────────────────────────────────────────────────────────────────
+const hasNote = item => !!item?.note?.trim();
+
+function noteItem(sel = S.noteSel) {
+  if (!sel) return null;
+  if (sel.node !== undefined) return S.nodes.find(n => n.id === sel.node) || null;
+  return S.edges.find(e => e.from === sel.edge[0] && e.to === sel.edge[1]) || null;
+}
+
+function setAnnotate(on) {
+  if (S.annotate === on) return;
+  S.annotate = on;
+  S.selected = null; S.mousePt = null; S.graphMsg = ''; S.noteSel = null;
+  renderStep0();
+}
+
+function openNote(sel) {
+  S.noteSel = sel;
+  const side = document.getElementById('builder-side');
+  if (side) side.innerHTML = annotPanelHtml();
+  rerenderDAG('dag0');
+  document.getElementById('i-note')?.focus();
+}
+
+function setNote(text) {
+  const item = noteItem();
+  if (!item) return;
+  const had = hasNote(item);
+  item.note = text;
+  if (had !== hasNote(item)) rerenderDAG('dag0'); // icon appears / disappears
+}
+
+function annotPanelHtml() {
+  const item = noteItem();
+  if (!item) return `<div class="card">
+    <div class="card-title">Annotate</div>
+    <div class="empty-hint">Click a node or edge in the graph to write a note about it, e.g. the assumptions behind adding it. Items with a note are marked with a yellow square.</div>
+  </div>`;
+  const isNode = S.noteSel.node !== undefined;
+  const name = id => escHtml(S.nodes.find(n => n.id === id)?.name ?? '?');
+  const subject = isNode
+    ? `${escHtml(item.name)} <span class="tag type-${item.type}">${NODE_TYPES.find(t => t[0] === item.type)[2]}</span>`
+    : `${name(item.from)} ${isShift(S.nodes.find(n => n.id === item.from) || {}) ? '⇢' : '→'} ${name(item.to)} <span class="tag tag-lat">Edge</span>`;
+  return `<div class="card">
+    <div class="card-title">Note</div>
+    <div class="note-subject">${subject}</div>
+    <div class="field"><textarea id="i-note" rows="10" placeholder="${isNode ? 'Why is this variable in the graph? What does it represent?' : 'Why does this edge exist? What causal assumption does it encode?'}" oninput="setNote(this.value)">${escHtml(item.note || '')}</textarea></div>
   </div>`;
 }
 
@@ -982,7 +1078,7 @@ function renderStep0() {
 <h2 class="sec-h">I. Problem Conceptualization</h2>
 <p class="sec-p">Build the causal graph of your prediction problem: the variables in your system, the target you want to predict, and the <strong>shift variables</strong> (squares) that index the environments where your model will be deployed. An edge S → X from a shift variable means the mechanism generating X can vary across environments.</p>
 <div class="builder">
-  <div class="builder-side">
+  <div class="builder-side" id="builder-side">${S.annotate ? annotPanelHtml() : `
     <div class="card">
       <div class="card-title">Add Node</div>
       <div class="field"><label>Name</label><input type="text" id="i-nname" placeholder="e.g. Age, Hospital, Outcome" onkeydown="if(event.key==='Enter')doAddNode()"></div>
@@ -1027,13 +1123,13 @@ function renderStep0() {
             </div>`;
           }).join('')}
       </div>
-    </div>
+    </div>`}
   </div>
 
   <div class="card builder-graph">
     <div class="card-title">Causal Graph</div>
     ${graphControlBar('dag0', true)}
-    <div class="dag-wrap"><svg id="dag0"></svg></div>
+    <div class="dag-wrap${S.annotate ? ' annotating' : ''}"><svg id="dag0"></svg></div>
     ${graphLegend()}
   </div>
 </div>`;
@@ -1827,6 +1923,7 @@ const EXAMPLES = [
 function loadExample(i = 0) {
   const ex = EXAMPLES[i];
   applyGraph(ex.graph);
+  S.file = { name: null }; // an example is a new, unsaved graph
   ex.after?.();
   renderAll();
 }
@@ -1836,7 +1933,7 @@ function loadExample(i = 0) {
 // ─────────────────────────────────────────────────────────────────────
 // File format (JSON). Later versions can add project information next to "graph".
 //   { "format": "domain-generalization-copilot", "version": 1,
-//     "graph": { "nodes": [{ "id", "name", "type", "x", "y" }], "edges": [{ "from", "to" }] } }
+//     "graph": { "nodes": [{ "id", "name", "type", "x", "y", "note"? }], "edges": [{ "from", "to", "note"? }] } }
 const FILE_FORMAT = 'domain-generalization-copilot', FILE_VERSION = 1;
 
 function graphToJSON() {
@@ -1846,9 +1943,9 @@ function graphToJSON() {
     graph: {
       nodes: S.nodes.map(n => {
         const p = S.nodePos[n.id];
-        return { id: n.id, name: n.name, type: n.type, ...(p ? { x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 } : {}) };
+        return { id: n.id, name: n.name, type: n.type, ...(p ? { x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 } : {}), ...(hasNote(n) ? { note: n.note } : {}) };
       }),
-      edges: S.edges.map(e => ({ from: e.from, to: e.to })),
+      edges: S.edges.map(e => ({ from: e.from, to: e.to, ...(hasNote(e) ? { note: e.note } : {}) })),
     },
   };
 }
@@ -1869,7 +1966,7 @@ function applyGraph(g) {
     names.add(name.toLowerCase());
     const id = ++seq;
     idMap.set(n.id, id);
-    nodes.push({ id, name, type: n.type });
+    nodes.push({ id, name, type: n.type, ...(typeof n.note === 'string' ? { note: n.note } : {}) });
     if (Number.isFinite(n.x) && Number.isFinite(n.y)) pos[id] = { x: n.x, y: n.y };
   }
   if (nodes.filter(n => n.type === 'target').length > 1) return 'the graph has more than one prediction target.';
@@ -1883,7 +1980,7 @@ function applyGraph(g) {
     if (isShift(tn)) return `edge ${fn.name} → ${tn.name} points into a shift variable.`;
     if (seen.has(from + '>' + to)) continue;
     seen.add(from + '>' + to);
-    edges.push({ from, to });
+    edges.push({ from, to, ...(typeof e.note === 'string' ? { note: e.note } : {}) });
   }
   // cycle check (Kahn)
   const indeg = {}, out = {};
@@ -1896,7 +1993,7 @@ function applyGraph(g) {
 
   S.nodes = nodes; S.edges = edges; S.nodePos = pos; S.view = {};
   S.stableMap = {}; nodes.forEach(n => { if (!isShift(n)) S.stableMap[n.id] = null; });
-  S.answers.canIsolateByShift = {}; S.selected = null; S.graphMsg = '';
+  S.answers.canIsolateByShift = {}; S.selected = null; S.graphMsg = ''; S.noteSel = null;
   nodeSeq = seq;
   return null;
 }
@@ -1909,8 +2006,14 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Files are saved as browser downloads, named after the file the graph was loaded from
+// (if any) so that a load / edit / save round trip keeps its name.
+const DEFAULT_FILENAME = 'causal-graph.json';
+
 function saveGraphFile() {
-  downloadBlob(new Blob([JSON.stringify(graphToJSON(), null, 2)], { type: 'application/json' }), 'causal-graph.json');
+  const name = S.file.name || DEFAULT_FILENAME;
+  downloadBlob(new Blob([JSON.stringify(graphToJSON(), null, 2)], { type: 'application/json' }), name);
+  showGraphInfo(`Saved as ${name}`);
 }
 
 function showGraphError(msg) {
@@ -1918,17 +2021,28 @@ function showGraphError(msg) {
   updateGraphStatus('dag0');
 }
 
+// Transient, non-error message in the graph toolbar; the next redraw replaces it
+function showGraphInfo(msg) {
+  const el = document.getElementById('dag0-status');
+  if (el) { el.classList.remove('err'); el.textContent = msg; }
+}
+
 async function loadGraphFile(input) {
   const file = input.files?.[0];
   input.value = ''; // allow re-loading the same file
   if (!file) return;
+  loadGraphText(file.name, await file.text());
+}
+
+function loadGraphText(name, text) {
   let data;
-  try { data = JSON.parse(await file.text()); }
-  catch { showGraphError(`Could not load "${file.name}": not a valid JSON file.`); return; }
-  if (data?.format !== undefined && data.format !== FILE_FORMAT) { showGraphError(`Could not load "${file.name}": not a Domain Generalization Copilot file.`); return; }
-  if (Number(data?.version) > FILE_VERSION) { showGraphError(`Could not load "${file.name}": it was saved by a newer version of this tool.`); return; }
+  try { data = JSON.parse(text); }
+  catch { showGraphError(`Could not load "${name}": not a valid JSON file.`); return; }
+  if (data?.format !== undefined && data.format !== FILE_FORMAT) { showGraphError(`Could not load "${name}": not a Domain Generalization Copilot file.`); return; }
+  if (Number(data?.version) > FILE_VERSION) { showGraphError(`Could not load "${name}": it was saved by a newer version of this tool.`); return; }
   const err = applyGraph(data?.graph);
-  if (err) { showGraphError(`Could not load "${file.name}": ${err}`); return; }
+  if (err) { showGraphError(`Could not load "${name}": ${err}`); return; }
+  S.file = { name };
   renderAll();
 }
 
@@ -1939,12 +2053,12 @@ const EXPORT_FONT = 'Helvetica, Arial, sans-serif';
 
 function buildExportSvg(svgId) {
   const svg = document.getElementById(svgId);
-  // re-render without the selection highlight / pending edge, then restore
-  const sel = S.selected;
-  S.selected = null; rerenderDAG(svgId);
+  // re-render without the selection highlight / pending edge / note icons, then restore
+  const sel = S.selected, annotate = S.annotate;
+  S.selected = null; S.annotate = false; rerenderDAG(svgId);
   const bb = svg.getBBox();
   const clone = svg.cloneNode(true);
-  S.selected = sel; rerenderDAG(svgId);
+  S.selected = sel; S.annotate = annotate; rerenderDAG(svgId);
 
   const pad = 20;
   const x = bb.x - pad, y = bb.y - pad, w = bb.width + 2 * pad, h = bb.height + 2 * pad;
