@@ -1100,7 +1100,7 @@ function renderStep0() {
   const nodeOptions = list => list.map(n => `<option value="${n.id}">${escHtml(n.name)}</option>`).join('');
 
   p.innerHTML = `
-<h2 class="sec-h">I. Problem Conceptualization</h2>
+<h2 class="sec-h">I. Graph Builder</h2>
 <p class="sec-p">Build the causal graph of your prediction problem: the variables in your system, the target you want to predict, and the <strong>shift variables</strong> (squares) that index the environments where your model will be deployed. An edge S → X from a shift variable means the mechanism generating X can vary across environments.</p>
 <div class="builder">
   <div class="builder-side" id="builder-side">${S.annotate ? annotPanelHtml() : `
@@ -1599,7 +1599,7 @@ function renderVerdict(main, progressBar) {
     <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center">
       <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Revise Answers</button>
       ${S.verdict === 'infeasible'
-        ? `<button class="btn btn-c1" onclick="jumpToStep(0)">← Back to Problem Conceptualization</button>`
+        ? `<button class="btn btn-c1" onclick="jumpToStep(0)">← Back to Graph Builder</button>`
         : `<button class="btn btn-c4" onclick="navigate(1)">Proceed to Deployment Strategies →</button>`
       }
     </div>
@@ -1859,7 +1859,7 @@ function renderAll() {
   // Update stepper
   const stepper = document.getElementById('stepper');
   const labels = [
-    ['I', 'Problem Conceptualization'],
+    ['I', 'Graph Builder'],
     ['II', 'Causal Description'],
     ['III', 'Feasibility Analysis'],
     ['IV', 'Deployment Strategies'],
