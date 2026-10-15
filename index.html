@@ -1919,20 +1919,63 @@ const EXAMPLES = [
     description: 'Lung cancer screening example from Butler et al. (2026)',
     graph: {
       nodes: [
-        { id: 1, name: 'Age_SES', type: 'latent', x: 80, y: 70 },
+        { id: 1, name: 'Age SES', type: 'latent', x: 80, y: 70, note: 'Accounts for the joint effects of age, occupation, and socio-economic status.' },
         { id: 2, name: 'Smoking', type: 'observed', x: 80, y: 170 },
-        { id: 3, name: 'Lung_Cancer', type: 'target', x: 200, y: 170 },
-        { id: 4, name: 'Weight_Loss', type: 'observed', x: 320, y: 170 },
-        { id: 5, name: 'Screening_Policy', type: 'shift', x: 320, y: 70 },
+        { id: 3, name: 'Lung Cancer', type: 'target', x: 200, y: 170 },
+        { id: 4, name: 'Weight Loss', type: 'observed', x: 320, y: 170 },
+        { id: 5, name: 'Screening Policy', type: 'shift', x: 320, y: 70 },
       ],
       edges: [
         { from: 1, to: 2 }, { from: 1, to: 3 }, { from: 2, to: 3 }, { from: 3, to: 4 }, { from: 5, to: 4 },
       ],
     },
     after() {
-      S.stableMap[S.nodes.find(n => n.name === 'Weight_Loss').id] = false;
+      S.stableMap[S.nodes.find(n => n.name === 'Weight Loss').id] = false;
       S.structAssump = 'Lung cancer risk is determined by smoking history and background factors (age, occupation, socio-economic status).';
-      S.funcAssump = 'The screening policy shift affects the distribution of Weight_Loss (a downstream symptom) but does not change the causal mechanism from Smoking to Lung_Cancer.';
+      S.funcAssump = 'The screening policy shift affects the distribution of Weight Loss (a downstream symptom) but does not change the causal mechanism from Smoking to Lung Cancer.';
+    },
+  },
+  {
+    name: 'Skin Lesion Classification',
+    description: 'Skin lesion classification example from Butler et al. (2026)',
+    graph: {
+      nodes: [
+        { id: 1, name: 'Disease State', type: 'latent', x: 80, y: 70 },
+        { id: 2, name: 'Biopsy Result', type: 'target', x: 80, y: 170 },
+        { id: 3, name: 'Skin Appearance', type: 'observed', x: 200, y: 70 },
+        { id: 4, name: 'Image', type: 'observed', x: 320, y: 70 },
+        { id: 5, name: 'Markings', type: 'observed', x: 320, y: 170 },
+        { id: 6, name: 'Clinical Site', type: 'shift', x: 200, y: 170 },
+      ],
+      edges: [
+        { from: 1, to: 2 }, { from: 1, to: 3 }, { from: 3, to: 4 }, { from: 3, to: 5 }, { from: 5, to: 4 }, { from: 6, to: 5 },
+      ],
+    },
+    after() {
+      S.stableMap[S.nodes.find(n => n.name === 'Markings').id] = false;
+      S.structAssump = 'The unobserved disease state determines the skin appearance, which is captured in the image. Clinicians observe the skin appearance and decide which areas to mark, and these markings also appear in the image.';
+      S.funcAssump = 'Marking conventions vary between institutions and physicians, which changes the distribution of Markings given the skin appearance. The pathway from disease state through skin appearance to the image is stable across sites.';
+    },
+  },
+  {
+    name: 'Dementia Severity',
+    description: 'Dementia severity prognosis example from Butler et al. (2026)',
+    graph: {
+      nodes: [
+        { id: 1, name: 'Neurodegeneration', type: 'latent', x: 200, y: 70 },
+        { id: 2, name: 'p-tau217', type: 'observed', x: 80, y: 170, note: 'The p-tau217 biomarker is used as a reliable amyloid positivity predictor in practice.\n\nRef: Shorena Janelidze, Erik Stomrud, Ruben Smith, Sebastian Palmqvist, Niklas Mattsson, David C Airey, Nicholas K Proctor, Xiyun Chai, Sergey Shcherbinin, John R Sims, et al. Cerebrospinal fluid p-tau217 performs better than p-tau181 as a biomarker of alzheimer’s disease. Nature communications, 11(1):1683, 2020.' },
+        { id: 3, name: 'Severe Dementia 2y', type: 'target', x: 200, y: 170 },
+        { id: 4, name: 'Donepezil', type: 'observed', x: 320, y: 170, note: 'Donepezil is commonly prescribed for Alzheimer’s disease symptoms.' },
+        { id: 5, name: 'Prescription Policy', type: 'shift', x: 320, y: 70 },
+      ],
+      edges: [
+        { from: 1, to: 2 }, { from: 1, to: 3 }, { from: 1, to: 4 }, { from: 5, to: 4 },
+      ],
+    },
+    after() {
+      S.stableMap[S.nodes.find(n => n.name === 'Donepezil').id] = false;
+      S.structAssump = 'Severe dementia in two years, donepezil prescription and the p-tau217 biomarker share a common unobserved cause, neurodegeneration.';
+      S.funcAssump = 'Donepezil prescription policy varies between sites (conservative vs. prevention first), which changes the distribution of Donepezil given neurodegeneration. The relationship between the p-tau217 biomarker and neurodegeneration is stable across sites.';
     },
   },
 ];
