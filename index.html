@@ -23,8 +23,7 @@ header .sub{font-size:.72rem;color:var(--muted);margin-top:1px}
 .step-tab .snum{width:19px;height:19px;border-radius:50%;background:#e2e8f0;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;transition:all .15s}
 .step-tab[data-s="0"].active{color:var(--c1);border-bottom-color:var(--c1)} .step-tab[data-s="0"].active .snum{background:var(--c1);color:#fff}
 .step-tab[data-s="1"].active{color:var(--c2);border-bottom-color:var(--c2)} .step-tab[data-s="1"].active .snum{background:var(--c2);color:#fff}
-.step-tab[data-s="2"].active{color:var(--c3);border-bottom-color:var(--c3)} .step-tab[data-s="2"].active .snum{background:var(--c3);color:#fff}
-.step-tab[data-s="3"].active{color:var(--c4);border-bottom-color:var(--c4)} .step-tab[data-s="3"].active .snum{background:var(--c4);color:#fff}
+.step-tab[data-s="2"].active{color:var(--c4);border-bottom-color:var(--c4)} .step-tab[data-s="2"].active .snum{background:var(--c4);color:#fff}
 .step-tab.done .snum{background:#94a3b8;color:#fff}
 .step-sep{color:#cbd5e1;padding:0 .1rem;align-self:center;font-size:1.1rem;flex-shrink:0}
 
@@ -124,7 +123,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .banner-danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
 .divider{height:1px;background:var(--border);margin:.85rem 0}
 
-/* STEP III — QUESTIONS */
+/* OPTIONAL PROBLEM DETAILS */
 .q-layout{display:flex;gap:1rem}
 .q-main{flex:1.2;min-width:0}
 .q-side{width:240px;flex-shrink:0}
@@ -147,26 +146,13 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .ans-opt.sel .ans-radio{border-color:var(--c3);background:var(--c3)}
 .ans-opt.sel .ans-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
 
-/* Stability table */
-.stab-table{display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem}
-.stab-row{display:flex;align-items:center;gap:.6rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:7px;background:#f8fafc}
-.stab-name{flex:1;font-weight:700;font-size:.83rem}
-.stab-hint{font-size:.68rem;color:var(--muted);flex:1.5;line-height:1.4}
-.stab-toggle{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--border);flex-shrink:0}
-.stab-btn{padding:.22rem .65rem;font-size:.7rem;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:inherit;transition:all .12s}
-.stab-btn.s-stable{background:#dcfce7;color:#166534}
-.stab-btn.s-unstable{background:#fee2e2;color:#991b1b}
-
-/* VERDICT */
-.verdict{border-radius:10px;padding:1.25rem 1.5rem;margin-top:1rem}
-.v-feasible{background:#f0fdf4;border:2px solid #86efac}
-.v-infeasible{background:#fef2f2;border:2px solid #fca5a5}
-.v-caveats{background:#fffbeb;border:2px solid #fcd34d}
-.v-title{font-size:1.05rem;font-weight:800;margin-bottom:.45rem}
-.v-feasible .v-title{color:#166534} .v-infeasible .v-title{color:#991b1b} .v-caveats .v-title{color:#854d0e}
-.v-body{font-size:.82rem;line-height:1.7}
-.v-body ul{padding-left:1.2rem;margin-top:.35rem}
-.v-body li{margin-bottom:.25rem}
+.question-fieldset{border:0;min-width:0}
+.question-fieldset legend{padding:0}
+.ans-opt:focus-within{outline:2px solid var(--c2);outline-offset:2px}
+.ans-opt input{accent-color:var(--c3);width:16px;height:16px;flex-shrink:0}
+.causal-notes{margin-top:1rem}
+.causal-notes summary{cursor:pointer;font-size:.82rem;font-weight:700}
+.causal-notes[open] summary{margin-bottom:.8rem}
 
 /* STRATEGY CARDS */
 .strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
@@ -174,10 +160,22 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .strat-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:1rem;border-left:4px solid var(--c4)}
 .strat-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07)}
 .strat-name{font-size:.88rem;font-weight:700;margin-bottom:.3rem}
-.strat-why{font-size:.65rem;font-weight:800;color:var(--c4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.strat-why{font-size:.72rem;color:var(--c4);margin-bottom:.6rem;line-height:1.55}
+.strat-field{font-size:.75rem;line-height:1.55;margin-top:.6rem}
+.strat-method{font-size:.72rem;color:var(--muted);margin-bottom:.6rem}
+.variable-ref{padding:.06em .35em;border:1px solid;border-radius:4px;font-weight:600;white-space:normal;overflow-wrap:anywhere;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.variable-ref-observed{background:#eff6ff;border-color:#bfdbfe;color:var(--col-obs)}
+.variable-ref-target{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+.variable-ref-shift{background:var(--col-shift);border-color:var(--col-shift);color:#fff}
+.variable-ref-latent{background:#f1f5f9;border-color:#cbd5e1;border-style:dashed;color:#475569}
+.strat-why,.strat-field,.problem-summary .summary-val{line-height:1.8}
+.nav-right{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:640px){.bottom-nav{padding:.5rem}.bottom-nav .btn{font-size:.7rem;padding:.5rem}body{padding-bottom:3rem}}
 .strat-desc{font-size:.75rem;color:var(--muted);line-height:1.55}
 
 /* SUMMARY PANEL */
+.problem-summary{margin-bottom:1rem;background:#f0fdf4;border-color:#bbf7d0;border-left:4px solid var(--c3)}
+.problem-summary .card-title{color:#166534}
 .summary-section{margin-bottom:.75rem}
 .summary-title{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
 .summary-val{font-size:.78rem;line-height:1.5}
@@ -208,7 +206,6 @@ dialog::backdrop{background:rgba(15,23,42,.35)}</style>
   <div class="step-panel" id="step0"></div>
   <div class="step-panel" id="step1"></div>
   <div class="step-panel" id="step2"></div>
-  <div class="step-panel" id="step3"></div>
 </main>
 
 <input type="file" id="i-loadfile" accept=".json,application/json" style="display:none" onchange="loadGraphFile(this)">
@@ -240,6 +237,7 @@ dialog::backdrop{background:rgba(15,23,42,.35)}</style>
   </div>
   <div class="nav-right">
     <span class="err-toast" id="nav-err"></span>
+    <button class="btn btn-c4" id="btn-preliminary" onclick="showStrategies()">View preliminary recommendations</button>
     <button class="btn btn-dark" id="btn-next" onclick="navigate(1)">Next &#8594;</button>
   </div>
 </div>
@@ -253,8 +251,9 @@ dialog::backdrop{background:rgba(15,23,42,.35)}</style>
 let nodeSeq = 0;
 
 const S = {
-  step: 0,    // 0=ProblemConceptualization, 1=CausalDesc, 2=Feasibility, 3=Strategies
-  subStep: 0, // Within step 2: 0=stability, 1..6=questions, 7=verdict
+  step: 0,    // 0=graph, 1=optional problem details, 2=strategies
+  questionKey: null, // Stable key of the current conditional question
+  strategyReturn: 0, // Where Back returns after opening strategies
 
   nodes: [],      // {id,name,type:'observed'|'latent'|'target'|'shift',note?}
   edges: [],      // {from,to,note?} — edges out of a shift node are shift edges
@@ -262,10 +261,8 @@ const S = {
   structAssump: '',
   funcAssump: '',
 
-  stableMap: {},  // nodeId → true|false
-  answers: { canAdapt:null, privacyOk:null, sufficientData:null, computeConstr:null, canIsolate:null, canIsolateByShift:{}, canPreprocess:null },
+  answers: emptyAnswers(),
 
-  verdict: null,  // 'feasible'|'infeasible'|'caveats'
   nodePos: {},    // nodeId → {x,y}
   dragKey: null,
   view: {},       // svgId → {x,y,scale}
@@ -298,6 +295,24 @@ function genericName() {
   return 'X' + i;
 }
 
+function emptyAnswers() {
+  return {
+    trainingEnvironments: null, deploymentData: null, worstGroup: null,
+    localUpdate: null, inputRoles: {}, corrections: {}, augmentations: {}, coverage: null,
+  };
+}
+
+function invalidateGraphAssessment(targetChanged = false) {
+  // These answers describe specific inputs and a specific predictor set.
+  // Keep shared data-access answers, but ask graph-specific questions again.
+  if (targetChanged) S.answers = emptyAnswers();
+  S.answers.inputRoles = {};
+  S.answers.corrections = {};
+  S.answers.augmentations = {};
+  S.answers.coverage = null;
+  S.questionKey = null;
+}
+
 // pos: optional {x,y} in graph coordinates; otherwise a free spot near the view centre
 function addNode(name, type, pos) {
   name = name.trim();
@@ -306,19 +321,19 @@ function addNode(name, type, pos) {
   if (type === 'target') S.nodes.forEach(n => { if (n.type === 'target') n.type = 'observed'; });
   const id = ++nodeSeq;
   S.nodes.push({ id, name, type });
-  if (!isShift({ type })) S.stableMap[id] = null;
   S.nodePos[id] = pos || findFreeSpot(viewCentre('dag0'));
+  invalidateGraphAssessment(type === 'target');
   renderAll();
   return null;
 }
 
 function removeNode(id) {
+  const targetChanged = S.nodes.some(n => n.id === id && n.type === 'target');
   S.nodes = S.nodes.filter(n => n.id !== id);
   S.edges = S.edges.filter(e => e.from !== id && e.to !== id);
-  delete S.stableMap[id];
   delete S.nodePos[id];
-  delete S.answers.canIsolateByShift[id];
   if (S.selected === id) S.selected = null;
+  invalidateGraphAssessment(targetChanged);
   renderAll();
 }
 
@@ -337,14 +352,14 @@ function renameNode(id, name) {
 function setNodeType(id, type) {
   const nd = S.nodes.find(n => n.id === id);
   if (!nd || nd.type === type) return null;
+  const targetChanged = nd.type === 'target' || type === 'target';
   if (type === 'shift' && S.edges.some(e => e.to === id)) {
     renderAll();
     return 'Shift variables cannot have incoming edges — remove them first.';
   }
   if (type === 'target') S.nodes.forEach(n => { if (n.type === 'target') n.type = 'observed'; });
-  if (type === 'shift') { delete S.stableMap[id]; }
-  else if (isShift(nd)) { S.stableMap[id] = null; delete S.answers.canIsolateByShift[id]; }
   nd.type = type;
+  invalidateGraphAssessment(targetChanged);
   renderAll();
   return null;
 }
@@ -355,12 +370,14 @@ function addEdge(fromId, toId) {
   if (S.edges.some(e => e.from === fromId && e.to === toId)) return 'This edge already exists.';
   if (pathExists(toId, fromId)) return 'This edge would create a cycle.';
   S.edges.push({ from: fromId, to: toId });
+  invalidateGraphAssessment();
   renderAll();
   return null;
 }
 
 function removeEdge(from, to) {
   S.edges = S.edges.filter(e => !(e.from === from && e.to === to));
+  invalidateGraphAssessment();
   renderAll();
 }
 
@@ -1162,596 +1179,389 @@ function renderStep0() {
   requestAnimationFrame(() => renderDAG('dag0', { draggable: true, editable: true }));
 }
 
+// Optional questions: definitions are shared by rendering, answer validation,
+// progress, and rule tests. A hidden follow-up cannot enable a strategy.
+const YES_NO_UNKNOWN = [
+  { value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' },
+  { value: 'unknown', label: 'Not known' },
+];
+
+function getQuestions(analysis = graphAnalysis()) {
+  if (!S.nodes.some(n => n.type === 'observed')) return [];
+  const questions = [{
+    key: 'trainingEnvironments', title: 'Where do your labelled training data come from?',
+    hint: 'An environment can be a hospital, scanner, population, or time period. Identifiers show which environment each record comes from.',
+    options: [
+      { value: 'single', label: 'One environment' },
+      { value: 'multiple_unknown', label: 'Several environments, without identifiers' },
+      { value: 'multiple_identified', label: 'Several environments, with identifiers' },
+      { value: 'unknown', label: 'Not known' },
+    ],
+  }];
+  if (S.answers.trainingEnvironments === 'multiple_identified') questions.push({
+    key: 'worstGroup', title: 'Is performance in the weakest recorded environment a priority?',
+    hint: 'This means giving more attention to the environment where the model makes the most errors.',
+    options: YES_NO_UNKNOWN,
+  });
+  questions.push({
+    key: 'deploymentData', title: 'What data from the intended deployment setting are available before use?',
+    hint: 'Labelled data include the correct prediction target. Unlabelled data contain inputs only.',
+    options: [
+      { value: 'none', label: 'No deployment data' },
+      { value: 'unlabelled', label: 'Unlabelled data' },
+      { value: 'labelled', label: 'Labelled data' },
+      { value: 'unknown', label: 'Not known' },
+    ],
+  });
+  if (S.answers.deploymentData === 'labelled') questions.push({
+    key: 'localUpdate', title: 'Can you update the model before deployment and test it on separate local data?',
+    hint: 'Choose Yes only if updates are permitted and labelled local test data can be kept separate from data used for the update.',
+    options: YES_NO_UNKNOWN,
+  });
+  analysis.shiftedInputs.forEach(n => {
+    questions.push({
+      key: `role:${n.id}`, title: `What does “${n.name}” represent in your inputs?`,
+      hint: 'The graph shows that a data shift can affect this input. A cue is a part of an input, such as an image marking, that could be edited.',
+      options: [
+        { value: 'measurement', label: 'A measurement that might need correction' },
+        { value: 'cue', label: 'An input cue that could be varied or removed' },
+        { value: 'both', label: 'Both a measurement and an editable cue' },
+        { value: 'other', label: 'Neither of these' },
+        { value: 'unknown', label: 'Not known' },
+      ],
+    });
+    const role = S.answers.inputRoles[n.id];
+    if (role === 'measurement' || role === 'both') questions.push({
+      key: `correction:${n.id}`, title: `Is a suitable correction for “${n.name}” known?`,
+      hint: 'Choose Yes only if the procedure reduces the measurement difference, preserves information needed for prediction, and can be applied to training and deployment data where needed.',
+      options: YES_NO_UNKNOWN,
+    });
+    if (role === 'cue' || role === 'both') questions.push({
+      key: `augmentation:${n.id}`, title: `Can you safely vary or remove “${n.name}” in training inputs?`,
+      hint: 'Choose Yes only if a known editing procedure preserves the correct target value and useful clinical information. This is an edit to recorded inputs, not a change to the patient.',
+      options: YES_NO_UNKNOWN,
+    });
+  });
+  if (analysis.weightingPredictors.length && ['unlabelled', 'labelled'].includes(S.answers.deploymentData)) questions.push({
+    key: 'coverage', title: 'Do training data cover the input values expected at deployment?',
+    hint: `Check this for: ${analysis.weightingPredictors.map(n => n.name).join(', ')}. Weighting cannot replace training examples for values or combinations that are absent.`,
+    options: YES_NO_UNKNOWN,
+  });
+  return questions;
+}
+
+function getQuestionAnswer(key) {
+  const [kind, id] = key.split(':');
+  const field = { role: 'inputRoles', correction: 'corrections', augmentation: 'augmentations' }[kind];
+  return field ? S.answers[field][id] ?? null : S.answers[key] ?? null;
+}
+
+function pruneAnswers() {
+  // Discard answers to branches that no longer exist after a parent changes.
+  if (S.answers.trainingEnvironments !== 'multiple_identified') S.answers.worstGroup = null;
+  if (S.answers.deploymentData !== 'labelled') S.answers.localUpdate = null;
+  const visible = new Set(getQuestions().map(q => q.key));
+  for (const [kind, field] of Object.entries({ role: 'inputRoles', correction: 'corrections', augmentation: 'augmentations' })) {
+    Object.keys(S.answers[field]).forEach(id => { if (!visible.has(`${kind}:${id}`)) delete S.answers[field][id]; });
+  }
+  if (!visible.has('coverage')) S.answers.coverage = null;
+}
+
+function selectAnswer(key, value) {
+  const question = getQuestions().find(q => q.key === key);
+  if (!question || !question.options.some(option => option.value === value)) return;
+  const [kind, id] = key.split(':');
+  const field = { role: 'inputRoles', correction: 'corrections', augmentation: 'augmentations' }[kind];
+  if (kind === 'role' && S.answers.inputRoles[id] !== value) {
+    delete S.answers.corrections[id]; delete S.answers.augmentations[id];
+  }
+  if (field) S.answers[field][id] = value;
+  else S.answers[key] = value;
+  S.questionKey = key;
+  pruneAnswers();
+  renderAll();
+  // Keep keyboard focus on the selected answer after the question is rebuilt.
+  document.getElementById(`answer-${key.replace(':', '-')}-${value}`)?.focus?.({ preventScroll: true });
+}
+
 function renderStep1() {
-  const p = document.getElementById('step1');
-
-  p.innerHTML = `
-<h2 class="sec-h">II. Causal Description</h2>
-<p class="sec-p">Encode your causal knowledge beyond the graph. Record any structural assumptions about the causal mechanisms, and functional assumptions about how the shift variables act on them.</p>
-
-<div class="two-col">
-  <div>
-    <div class="card">
-      <div class="card-title">Causal Assumptions (optional)</div>
-      <div class="field">
-        <label>Structural Assumptions</label>
-        <textarea id="i-struct" placeholder="E.g.: Blood pressure depends linearly on dosage. The target Y is determined by X₁ and X₂ through a logistic function.">${escHtml(S.structAssump)}</textarea>
-      </div>
-      <div class="field">
-        <label>Functional Assumptions about Shifts</label>
-        <textarea id="i-func" placeholder="E.g.: The shift in scanner noise is additive with constant mean and varying variance. The prevalence shift affects only P(Y), not P(X|Y).">${escHtml(S.funcAssump)}</textarea>
-      </div>
+  const questions = getQuestions();
+  let index = questions.findIndex(q => q.key === S.questionKey);
+  if (index < 0) index = 0;
+  const question = questions[index];
+  S.questionKey = question?.key || null;
+  const answered = questions.filter(q => getQuestionAnswer(q.key) !== null).length;
+  const optionHtml = question ? question.options.map(option => `
+    <label class="ans-opt ${getQuestionAnswer(question.key) === option.value ? 'sel' : ''}">
+      <input id="answer-${question.key.replace(':', '-')}-${option.value}" type="radio" name="detail-answer" value="${option.value}" ${getQuestionAnswer(question.key) === option.value ? 'checked' : ''}
+        onchange="selectAnswer('${question.key}','${option.value}')">
+      <span>${escHtml(option.label)}</span>
+    </label>`).join('') : '';
+  document.getElementById('step1').innerHTML = `
+<h2 class="sec-h">II. Problem Details</h2>
+<p class="sec-p">Answer only the questions that apply to your graph. Select “Not known” if needed. You can view recommendations at any time.</p>
+<div class="q-layout">
+  <div class="q-main">
+    <div class="q-card">
+      ${question ? `
+      <div class="q-label">Question ${index + 1} of ${questions.length}</div>
+      <p class="q-hint">${answered} answered. Follow-up questions appear only when needed.</p>
+      <fieldset class="question-fieldset">
+        <legend class="q-text">${escHtml(question.title)}</legend>
+        <p class="q-hint">${escHtml(question.hint)}</p>
+        <div class="ans-opts">${optionHtml}</div>
+      </fieldset>` : '<p class="q-text">No questions apply to the current graph.</p><p class="q-hint">Add observed inputs to explore more strategies.</p>'}
     </div>
+    <details class="card causal-notes">
+      <summary>Optional causal notes</summary>
+      <p class="q-hint">Record knowledge that the graph cannot show. These notes do not change the automatic recommendations.</p>
+      <div class="field"><label for="i-struct">Structural assumptions</label><textarea id="i-struct" placeholder="Describe how variables are generated or related.">${escHtml(S.structAssump)}</textarea></div>
+      <div class="field"><label for="i-func">Assumptions about shifts</label><textarea id="i-func" placeholder="Describe how a shift changes a variable.">${escHtml(S.funcAssump)}</textarea></div>
+    </details>
   </div>
-
-  <div>
-    <div class="card" style="height:100%;display:flex;flex-direction:column">
-      <div class="card-title">Causal Graph</div>
-      ${S.nodes.some(isShift) ? '' : '<div class="banner banner-warn" style="font-size:.72rem;margin-bottom:.65rem">No shift variables defined. Go back to Step I to add them as nodes of type “Shift Variable”.</div>'}
-      ${graphControlBar('dag1')}
-      <div class="dag-wrap" style="flex:1">
-        <svg id="dag1"></svg>
-      </div>
-      ${graphLegend()}
-    </div>
-  </div>
+  <div class="q-side"><div class="card">
+    <div class="card-title">Your graph</div>
+    ${graphControlBar('dag1')}
+    <div class="dag-wrap"><svg id="dag1" data-h="195"></svg></div>
+    ${graphLegend()}
+  </div></div>
 </div>`;
-
-  p.querySelector('#i-struct').addEventListener('input', e => S.structAssump = e.target.value);
-  p.querySelector('#i-func').addEventListener('input', e => S.funcAssump = e.target.value);
-
+  document.getElementById('i-struct').addEventListener('input', e => S.structAssump = e.target.value);
+  document.getElementById('i-func').addEventListener('input', e => S.funcAssump = e.target.value);
   requestAnimationFrame(() => renderDAG('dag1', { draggable: true }));
 }
 
-function renderStep2() {
-  const p = document.getElementById('step2');
-  const covariates = S.nodes.filter(n => n.type !== 'target' && n.type !== 'latent');
-  const target = S.nodes.find(n => n.type === 'target');
-  const totalQs = 7; // stability + 6 questions
-
-  p.innerHTML = `
-<h2 class="sec-h">III. Feasibility Analysis</h2>
-<p class="sec-p" style="margin-bottom:.75rem">Answer the questions below to determine whether a robust predictive model is feasible for your problem. Your answers will guide which deployment strategies are applicable.</p>
-<div class="q-layout">
-  <div class="q-main" id="q-main-area"></div>
-  <div class="q-side" id="q-side-area"></div>
-</div>`;
-
-  renderQ3Side();
-  renderQ3Main();
-}
-
-function renderQ3Side() {
-  const side = document.getElementById('q-side-area');
-  if (!side) return;
-  const target = S.nodes.find(n => n.type === 'target');
-  const stableCount = Object.values(S.stableMap).filter(v => v === true).length;
-  const unstableCount = Object.values(S.stableMap).filter(v => v === false).length;
-
-  side.innerHTML = `
-    <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">Graph</div>
-      ${graphControlBar('dag2')}
-      <div class="dag-wrap">
-        <svg id="dag2" data-h="195"></svg>
-      </div>
-      <div class="dag-legend" style="margin-top:.4rem">
-        <div class="leg-item"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #4ade80;flex-shrink:0"></span>Stable</div>
-        <div class="leg-item"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px dashed #f87171;flex-shrink:0"></span>Unstable</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Summary</div>
-      <div class="summary-section">
-        <div class="summary-title">Target</div>
-        <div class="summary-val">${target ? `<span class="tag tag-target">${escHtml(target.name)}</span>` : '<em style="color:var(--muted)">Not specified</em>'}</div>
-      </div>
-      <div class="summary-section">
-        <div class="summary-title">Shift Variables</div>
-        <div class="summary-val">${shiftVars().length === 0 ? '<em style="color:var(--muted)">None specified</em>' : shiftVars().map(sv => `<span class="summary-tag tag-sv">${escHtml(sv.name)}</span>`).join('')}</div>
-      </div>
-      ${S.subStep >= 0 ? `
-      <div class="summary-section">
-        <div class="summary-title">Stability</div>
-        <div class="summary-val" style="font-size:.78rem">
-          ${stableCount > 0 ? `<span style="color:#166534">✓ ${stableCount} stable</span>` : ''}
-          ${unstableCount > 0 ? `<span style="color:#991b1b;${stableCount>0?'margin-left:.5rem':''}">⚠ ${unstableCount} unstable</span>` : ''}
-          ${stableCount === 0 && unstableCount === 0 ? '<em style="color:var(--muted)">Not assessed yet</em>' : ''}
-        </div>
-      </div>` : ''}
-    </div>`;
-
-  requestAnimationFrame(() => renderDAG('dag2', { stableMap: S.stableMap, draggable: true }));
-}
-
-function renderQ3Main() {
-  const main = document.getElementById('q-main-area');
-  if (!main) return;
-
-  const totalDots = 8; // 0=stability, 1-6=questions, 7=verdict
-  const dots = Array.from({ length: totalDots }, (_, i) => {
-    let cls = 'q-dot';
-    if (i < S.subStep) cls += ' done';
-    else if (i === S.subStep) cls += ' active';
-    return `<div class="${cls}"></div>`;
-  }).join('');
-
-  const progressBar = `<div class="q-progress">${dots}<span style="font-size:.68rem;color:var(--muted);margin-left:.5rem">${S.subStep < 7 ? `Step ${S.subStep + 1} of 7` : 'Analysis complete'}</span></div>`;
-
-  if (S.subStep === 0) {
-    renderStabilityQ(main, progressBar);
-  } else if (S.subStep >= 1 && S.subStep <= 6) {
-    renderSingleQ(main, progressBar, S.subStep);
-  } else {
-    renderVerdict(main, progressBar);
+function advanceDetailQuestion() {
+  const questions = getQuestions();
+  const index = questions.findIndex(q => q.key === S.questionKey);
+  if (index >= 0 && getQuestionAnswer(questions[index].key) === null) {
+    setNavErr('Select an answer, or select “Not known”.'); return;
   }
-}
-
-function renderStabilityQ(main, progressBar) {
-  const covariates = varNodes().filter(n => n.type !== 'target');
-  const shiftAffected = new Set(shiftVars().flatMap(sv => sv.affects));
-
-  // Also propagate: if a node is directly affected, and it points to other nodes, those might be unstable too
-  const propagated = new Set(shiftAffected);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    S.edges.forEach(e => {
-      if (propagated.has(e.from) && !propagated.has(e.to)) {
-        const dst = S.nodes.find(n => n.id === e.to);
-        if (dst && dst.type !== 'target') { propagated.add(e.to); changed = true; }
-      }
-    });
-  }
-
-  const rows = covariates.map(n => {
-    const directShift = shiftAffected.has(n.id);
-    const indirectShift = propagated.has(n.id) && !directShift;
-    let hint = '';
-    if (directShift) {
-      const svNames = shiftVars().filter(sv => sv.affects.includes(n.id)).map(sv => sv.name).join(', ');
-      hint = `Directly affected by: <strong>${svNames}</strong>`;
-    } else if (indirectShift) {
-      hint = 'Downstream of an affected variable — may be unstable.';
-    } else if (shiftVars().length > 0) {
-      hint = 'No direct shift connection — likely stable.';
-    } else {
-      hint = 'No shift variables defined.';
-    }
-
-    const curVal = S.stableMap[n.id];
-    // Initialize if null
-    if (curVal === null) S.stableMap[n.id] = !(directShift || indirectShift);
-
-    const isStable = S.stableMap[n.id];
-    return `<div class="stab-row" id="stabrow-${n.id}">
-      <span class="stab-name">${escHtml(n.name)} <span class="tag tag-${n.type === 'latent' ? 'lat' : 'obs'}" style="font-size:.6rem">${n.type === 'latent' ? 'Latent' : 'Observed'}</span></span>
-      <span class="stab-hint">${hint}</span>
-      <div class="stab-toggle">
-        <button class="stab-btn ${isStable ? 's-stable' : ''}" onclick="setStable(${n.id},true)">Stable</button>
-        <button class="stab-btn ${!isStable ? 's-unstable' : ''}" onclick="setStable(${n.id},false)">Unstable</button>
-      </div>
-    </div>`;
-  });
-
-  main.innerHTML = `${progressBar}
-  <div class="q-card">
-    <div class="q-label">Stability Classification</div>
-    <div class="q-text">Which variables have a <em>stable</em> relationship with the prediction target across deployment environments?</div>
-    <div class="q-hint">A relationship is <strong>stable</strong> if it remains consistent across different deployment environments (hospitals, time periods, etc.). Shift variables in your graph suggest potential instability. You can override any pre-suggestion below.</div>
-    ${covariates.length === 0
-      ? '<div class="banner banner-warn">No non-target variables defined. Go back to Step I to add covariates.</div>'
-      : `<div class="stab-table">${rows.join('')}</div>`
-    }
-    <div style="margin-top:1rem;display:flex;justify-content:flex-end">
-      <button class="btn btn-c3" onclick="advanceSubStep()">Next Question →</button>
-    </div>
-  </div>`;
-}
-
-function setStable(nodeId, isStable) {
-  S.stableMap[nodeId] = isStable;
-  renderQ3Main();
-  renderQ3Side();
-}
-
-const QUESTIONS = [
-  {
-    key: 'canAdapt',
-    label: 'Operational Constraints',
-    text: 'Can the model access and use data from the deployment environment to adapt itself?',
-    hint: 'This includes test-time adaptation, fine-tuning on deployment data, domain adaptation with unlabelled target data, or continual learning.',
-    opts: [
-      { val: 'yes', label: 'Yes — deployment data is accessible for adaptation' },
-      { val: 'partial', label: 'Partially — limited access (e.g. only a small sample, no labels)' },
-      { val: 'no', label: 'No — the model must be fixed at deployment time' },
-    ],
-  },
-  {
-    key: 'privacyOk',
-    label: 'Privacy Constraints',
-    text: 'Are there privacy or regulatory constraints on the use of deployment-site data?',
-    hint: 'For example, GDPR restrictions, data governance policies, or clinical ethics requirements that prevent centralising or storing deployment data.',
-    opts: [
-      { val: 'no', label: 'No significant privacy constraints' },
-      { val: 'yes', label: 'Yes — strict privacy/regulatory restrictions apply' },
-    ],
-  },
-  {
-    key: 'sufficientData',
-    label: 'Data Availability',
-    text: 'Is there sufficient training data to learn a robust predictive model?',
-    hint: 'Consider whether you have enough labeled examples to train the model reliably. Small datasets limit which methods are feasible.',
-    opts: [
-      { val: 'yes', label: 'Yes — adequate training data is available' },
-      { val: 'unsure', label: 'Uncertain — the dataset is small or may be insufficient' },
-      { val: 'no', label: 'No — data is severely limited' },
-    ],
-  },
-  {
-    key: 'computeConstr',
-    label: 'Computational Constraints',
-    text: 'Are there strict constraints on inference speed, memory, or compute resources at deployment?',
-    hint: 'Some robustness methods (e.g. ensembles, large neural networks) are computationally expensive. If deployment is on edge devices or in real-time clinical settings, this matters.',
-    opts: [
-      { val: 'no', label: 'No significant computational constraints' },
-      { val: 'yes', label: 'Yes — strict speed, memory or compute limits apply' },
-    ],
-  },
-  {
-    key: 'canIsolate',
-    label: 'Shift Isolation',
-    text: 'For each shift variable you defined, can its effects be isolated or controlled using adjustment variables, proxies, or known environment indicators?',
-    hint: 'Select one answer for each shift variable (for example Hospital, Scanner, or Time period). If a shift variable is not observable, choose “No”.',
-    opts: [
-      { val: 'yes', label: 'Yes — the shift can be identified or controlled' },
-      { val: 'unsure', label: 'Possibly — some proxy information is available' },
-      { val: 'no', label: 'No — the shift is unknown or unobservable' },
-    ],
-  },
-  {
-    key: 'canPreprocess',
-    label: 'Preprocessing Options',
-    text: 'Are there data preprocessing techniques that can reduce the influence of the anticipated shifts?',
-    hint: 'Examples include: site-specific normalisation, artifact removal (e.g. scanner harmonisation), de-referencing for signal drift, or known calibration procedures.',
-    opts: [
-      { val: 'yes', label: 'Yes — specific preprocessing steps are known and applicable' },
-      { val: 'unsure', label: 'Possibly — some preprocessing might help but is uncertain' },
-      { val: 'no', label: 'No — no applicable preprocessing is known' },
-    ],
-  },
-];
-
-function getCanIsolateSummary() {
-  const entries = Object.values(S.answers.canIsolateByShift || {});
-  if (entries.length === 0) {
-    return S.answers.canIsolate ?? null;
-  }
-  if (entries.some(v => v === 'yes')) return 'yes';
-  if (entries.some(v => v === 'unsure')) return 'unsure';
-  return 'no';
-}
-
-function renderShiftIsolationQ(main, progressBar, q, subStep) {
-  const svList = shiftVars();
-  const allAnswered = svList.length === 0 || svList.every(sv => S.answers.canIsolateByShift?.[sv.id] !== undefined && S.answers.canIsolateByShift?.[sv.id] !== null);
-  const itemsHtml = svList.length > 0
-    ? svList.map(sv => {
-        const curVal = S.answers.canIsolateByShift?.[sv.id];
-        return `<div class="card" style="margin-bottom:.7rem;padding:1rem">
-          <div style="font-size:.8rem;font-weight:700;margin-bottom:.45rem">${escHtml(sv.name)}</div>
-          <div class="q-hint" style="margin-bottom:.7rem">How well can the effects of this shift be isolated or controlled?</div>
-          <div class="ans-opts">
-            ${q.opts.map(o => `
-              <div class="ans-opt ${curVal === o.val ? 'sel' : ''}" onclick="selectShiftIsolationAnswer(${sv.id}, '${o.val}')">
-                <div class="ans-radio"></div>
-                <span>${o.label}</span>
-              </div>`).join('')}
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="banner banner-warn">No shift variables are defined yet. Add them in Step I to assess isolation for each one.</div>';
-
-  main.innerHTML = `${progressBar}
-  <div class="q-card">
-    <div class="q-label">${q.label}</div>
-    <div class="q-text">${q.text}</div>
-    <div class="q-hint">${q.hint}</div>
-    ${itemsHtml}
-    <div style="margin-top:1rem;display:flex;justify-content:space-between">
-      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Previous</button>
-      <button class="btn btn-c3" onclick="advanceSubStep()" ${allAnswered ? '' : 'disabled'}>
-        ${subStep < 6 ? 'Next Question →' : 'See Feasibility Result →'}
-      </button>
-    </div>
-  </div>`;
-}
-
-function renderSingleQ(main, progressBar, subStep) {
-  const q = QUESTIONS[subStep - 1];
-  if (q.key === 'canIsolate') {
-    renderShiftIsolationQ(main, progressBar, q, subStep);
-    return;
-  }
-
-  const curVal = S.answers[q.key];
-
-  main.innerHTML = `${progressBar}
-  <div class="q-card">
-    <div class="q-label">${q.label}</div>
-    <div class="q-text">${q.text}</div>
-    <div class="q-hint">${q.hint}</div>
-    <div class="ans-opts">
-      ${q.opts.map(o => `
-        <div class="ans-opt ${curVal === o.val ? 'sel' : ''}" onclick="selectAnswer('${q.key}','${o.val}')">
-          <div class="ans-radio"></div>
-          <span>${o.label}</span>
-        </div>`).join('')}
-    </div>
-    <div style="margin-top:1rem;display:flex;justify-content:space-between">
-      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Previous</button>
-      <button class="btn btn-c3" onclick="advanceSubStep()" ${curVal === null ? 'disabled' : ''}>
-        ${subStep < 6 ? 'Next Question →' : 'See Feasibility Result →'}
-      </button>
-    </div>
-  </div>`;
-}
-
-function selectAnswer(key, val) {
-  S.answers[key] = val;
-  renderQ3Main();
-}
-
-function selectShiftIsolationAnswer(svId, val) {
-  S.answers.canIsolateByShift[svId] = val;
-  S.answers.canIsolate = getCanIsolateSummary();
-  renderQ3Main();
-}
-
-function advanceSubStep() {
-  S.subStep = Math.min(7, S.subStep + 1);
-  if (S.subStep === 7) computeVerdict();
-  renderQ3Main();
-  renderQ3Side();
-}
-
-function retreatSubStep() {
-  S.subStep = Math.max(0, S.subStep - 1);
-  renderQ3Main();
-}
-
-function computeVerdict() {
-  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
-  const hasStable = stableNodes.length > 0;
-  const canIsolateValue = getCanIsolateSummary();
-  const canIsolate = canIsolateValue === 'yes' || canIsolateValue === 'unsure';
-  const canPreprocess = S.answers.canPreprocess !== 'no';
-  const sufficientData = S.answers.sufficientData !== 'no';
-  const canAdapt = S.answers.canAdapt !== 'no';
-
-  if (!hasStable && !canIsolate && !canPreprocess) {
-    S.verdict = 'infeasible';
-  } else if (hasStable && sufficientData && (canAdapt || canIsolate || canPreprocess)) {
-    S.verdict = 'feasible';
-  } else {
-    S.verdict = 'caveats';
-  }
-}
-
-function renderVerdict(main, progressBar) {
-  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
-  const unstableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === false);
-  const latentNodes = S.nodes.filter(n => n.type === 'latent');
-
-  let verdictHtml = '';
-  if (S.verdict === 'feasible') {
-    verdictHtml = `<div class="verdict v-feasible">
-      <div class="v-title">✓ Problem is Feasible</div>
-      <div class="v-body">
-        Your problem description has sufficient structure to design a robust predictive model.
-        ${stableNodes.length > 0 ? `You have <strong>${stableNodes.length} stable variable(s)</strong> (${stableNodes.map(n=>escHtml(n.name)).join(', ')}) that provide a reliable prediction baseline.` : ''}
-        ${S.answers.canAdapt !== 'no' ? ' The model can adapt to the deployment environment, opening up domain adaptation strategies.' : ''}
-        ${S.answers.canIsolate !== 'no' ? ' Shift effects can be partially isolated or controlled.' : ''}
-        <br><br>Proceed to <strong>Step IV</strong> to see recommended deployment strategies for your problem.
-      </div>
-    </div>`;
-  } else if (S.verdict === 'infeasible') {
-    verdictHtml = `<div class="verdict v-infeasible">
-      <div class="v-title">✗ Problem is Infeasible — Return to Step I</div>
-      <div class="v-body">
-        Based on your current problem description, no reliable mitigation strategy appears applicable:
-        <ul>
-          ${stableNodes.length === 0 ? '<li>No stable covariates identified — the model has no reliable signal that persists across environments.</li>' : ''}
-          ${S.answers.canIsolate === 'no' ? '<li>The shift mechanism cannot be isolated or controlled.</li>' : ''}
-          ${S.answers.canPreprocess === 'no' ? '<li>No preprocessing steps can reduce the shift influence.</li>' : ''}
-        </ul>
-        <br><strong>Suggested next steps — return to Step I and consider:</strong>
-        <ul>
-          <li>Adding additional variables that are causally upstream of the target and unaffected by shifts.</li>
-          <li>Redesigning the prediction target to a quantity with more stable causal determinants.</li>
-          <li>Re-examining your shift assumptions — are they all necessary, or can some be relaxed?</li>
-          <li>Collecting proxy measurements for the shift mechanism to enable isolation strategies.</li>
-          <li>Revisiting whether deployment really requires generalisation across these environments.</li>
-        </ul>
-      </div>
-    </div>`;
-  } else {
-    verdictHtml = `<div class="verdict v-caveats">
-      <div class="v-title">⚠ Problem is Feasible with Caveats</div>
-      <div class="v-body">
-        A solution may be possible, but with limitations:
-        <ul>
-          ${stableNodes.length === 0 ? '<li>No stable covariates — the model will rely entirely on mitigation strategies, with no guaranteed performance floor.</li>' : ''}
-          ${S.answers.sufficientData === 'no' ? '<li>Limited data may prevent some methods (e.g. invariant learning, domain adaptation) from working reliably.</li>' : ''}
-          ${S.answers.sufficientData === 'unsure' ? '<li>Data availability is uncertain — validate that methods requiring multiple environments or large samples are feasible.</li>' : ''}
-          ${S.answers.canAdapt === 'no' && stableNodes.length < 2 ? '<li>Without adaptation and stable features, robustness is very limited.</li>' : ''}
-        </ul>
-        <br>Proceed to <strong>Step IV</strong> to review applicable strategies and their trade-offs for your problem.
-      </div>
-    </div>`;
-  }
-
-  main.innerHTML = `${progressBar}
-  <div class="q-card">
-    <div class="q-label">Feasibility Verdict</div>
-    <div class="q-text">Based on your answers, here is the feasibility assessment:</div>
-    ${verdictHtml}
-    <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center">
-      <button class="btn btn-ghost btn-sm" onclick="retreatSubStep()">← Revise Answers</button>
-      ${S.verdict === 'infeasible'
-        ? `<button class="btn btn-c1" onclick="jumpToStep(0)">← Back to Graph Builder</button>`
-        : `<button class="btn btn-c4" onclick="navigate(1)">Proceed to Deployment Strategies →</button>`
-      }
-    </div>
-  </div>`;
-}
-
-function jumpToStep(step) {
-  S.step = step;
-  S.subStep = 0;
+  if (index < 0 || index === questions.length - 1) { showStrategies(); return; }
+  S.questionKey = questions[index + 1].key;
   renderAll();
+  window.scrollTo(0, 0);
 }
 
-function renderStep3() {
-  const p = document.getElementById('step3');
-  const strats = computeStrategies();
+function retreatDetailQuestion() {
+  const questions = getQuestions();
+  const index = questions.findIndex(q => q.key === S.questionKey);
+  if (index <= 0) S.step = 0;
+  else S.questionKey = questions[index - 1].key;
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+function startDetails() {
+  const err = validateStep(0, 1);
+  if (err) { setNavErr(err); return; }
+  S.step = 1;
+  const questions = getQuestions();
+  S.questionKey = (questions.find(q => getQuestionAnswer(q.key) === null) || questions[0])?.key || null;
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+function showStrategies() {
+  const err = validateStep(0, 1);
+  if (err) { setNavErr(err); return; }
+  if (S.step !== 2) S.strategyReturn = S.step;
+  S.step = 2;
+  S.selected = null;
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+// d-separation via the ancestral moral graph. Latent nodes remain in the graph;
+// only observed nodes can be conditioned on as predictors. Conditioning can open
+// collider paths, so descendant reachability is not a sufficient stability test.
+function separatesShifts(predictors) {
   const target = S.nodes.find(n => n.type === 'target');
-  const stableNodes = S.nodes.filter(n => S.stableMap[n.id] === true);
-
-  p.innerHTML = `
-<h2 class="sec-h">IV. Deployment Strategies</h2>
-<p class="sec-p">Based on your causal description and feasibility analysis, the following strategies are recommended for your problem. These are not mutually exclusive — combining them often yields the best results.</p>
-
-<div class="two-col" style="margin-bottom:1rem">
-  <div class="card" style="border-left:4px solid var(--c3)">
-    <div class="card-title">Problem Summary</div>
-    <div style="font-size:.78rem;line-height:1.7">
-      <div><strong>Target:</strong> ${target ? escHtml(target.name) : 'Not specified'}</div>
-      <div><strong>Variables:</strong> ${varNodes().filter(n=>n.type!=='target').map(n=>escHtml(n.name)).join(', ') || 'None'}</div>
-      <div><strong>Shift variables:</strong> ${shiftVars().map(sv=>escHtml(sv.name)).join(', ') || 'None defined'}</div>
-      <div><strong>Stable covariates:</strong> ${stableNodes.map(n=>escHtml(n.name)).join(', ') || 'None identified'}</div>
-    </div>
-  </div>
-  <div class="card" style="border-left:4px solid ${S.verdict==='feasible' ? 'var(--c3)' : S.verdict==='infeasible' ? 'var(--red)' : 'var(--amber)'}">
-    <div class="card-title">Feasibility Verdict</div>
-    <div style="font-size:.88rem;font-weight:700;margin-bottom:.3rem;color:${S.verdict==='feasible' ? '#166534' : S.verdict==='infeasible' ? '#991b1b' : '#854d0e'}">
-      ${S.verdict==='feasible' ? '✓ Feasible' : S.verdict==='infeasible' ? '✗ Infeasible' : '⚠ Feasible with Caveats'}
-    </div>
-    <div style="font-size:.75rem;color:var(--muted);line-height:1.5">
-      ${S.answers.canAdapt !== null ? `<div>Can adapt: <strong>${S.answers.canAdapt}</strong></div>` : ''}
-      ${S.answers.canIsolate !== null || Object.keys(S.answers.canIsolateByShift || {}).length > 0 ? `<div>Can isolate shift: <strong>${getCanIsolateSummary() || 'not answered'}</strong></div>` : ''}
-      ${S.answers.canPreprocess !== null ? `<div>Preprocessing available: <strong>${S.answers.canPreprocess}</strong></div>` : ''}
-    </div>
-  </div>
-</div>
-
-${strats.length === 0
-  ? '<div class="banner banner-warn">No strategies applicable given the current feasibility analysis. Return to Step I to revise your problem definition.</div>'
-  : `<div class="strat-grid">${strats.map(s => `
-    <div class="strat-card">
-      <div class="strat-name">${s.name}</div>
-      <div class="strat-why">${s.why}</div>
-      <div class="strat-desc">${s.desc}</div>
-    </div>`).join('')}</div>`
+  const shifts = shiftVars();
+  if (!target || !shifts.length) return false;
+  const conditioned = new Set(predictors);
+  const ancestors = new Set([target.id, ...shifts.map(n => n.id), ...predictors]);
+  const queue = [...ancestors];
+  for (let i = 0; i < queue.length; i++) {
+    S.edges.forEach(e => {
+      if (e.to === queue[i] && !ancestors.has(e.from)) {
+        ancestors.add(e.from); queue.push(e.from);
+      }
+    });
+  }
+  const adj = new Map([...ancestors].map(id => [id, new Set()]));
+  const link = (a, b) => { adj.get(a).add(b); adj.get(b).add(a); };
+  ancestors.forEach(id => {
+    const parents = S.edges.filter(e => e.to === id).map(e => e.from);
+    parents.forEach(parent => link(parent, id));
+    parents.forEach((a, i) => parents.slice(i + 1).forEach(b => link(a, b)));
+  });
+  const visited = new Set(conditioned), pending = shifts.map(n => n.id);
+  for (let i = 0; i < pending.length; i++) {
+    const id = pending[i];
+    if (id === target.id) return false;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    adj.get(id).forEach(next => { if (!visited.has(next)) pending.push(next); });
+  }
+  return true;
 }
 
-<div style="margin-top:1.5rem">
-  <div class="banner banner-info">
-    <strong>Note:</strong> These recommendations are based on your causal description and the answers you provided. Model design is iterative — empirically evaluating multiple strategies and comparing them in validation studies is recommended. See Butler et al. (2026) for further guidance.
+function graphAnalysis() {
+  const observed = S.nodes.filter(n => n.type === 'observed');
+  const target = S.nodes.find(n => n.type === 'target');
+  const shifts = shiftVars();
+  if (!target) return { predictors: [], shifts, shiftedInputs: [], weightingPredictors: [] };
+  // Start with observed nodes connected to the target without traversing shifts.
+  // Connectivity suggests a possible signal, not its strength or clinical utility.
+  const connected = new Set([target.id]), pending = [target.id];
+  for (let i = 0; i < pending.length; i++) {
+    S.edges.forEach(e => {
+      const other = e.from === pending[i] ? e.to : e.to === pending[i] ? e.from : null;
+      if (other !== null && !connected.has(other) && !isShift(S.nodes.find(n => n.id === other))) {
+        connected.add(other); pending.push(other);
+      }
+    });
+  }
+  const ids = observed.filter(n => connected.has(n.id)).map(n => n.id);
+  // Observed ancestors of target and shifts provide a conservative separator
+  // candidate. Also try all connected predictors and singletons. This bounded
+  // search deliberately does not enumerate or rank every possible predictor set.
+  const ancestors = new Set([target.id, ...shifts.map(n => n.id)]);
+  const upstream = [...ancestors];
+  for (let i = 0; i < upstream.length; i++) {
+    S.edges.forEach(e => {
+      if (e.to === upstream[i] && !ancestors.has(e.from)) {
+        ancestors.add(e.from); upstream.push(e.from);
+      }
+    });
+  }
+  const candidates = [ids, ids.filter(id => ancestors.has(id)), ...ids.map(id => [id])];
+  const predictorIds = candidates.find(set => set.length && separatesShifts(set)) || [];
+  const predictors = observed.filter(n => predictorIds.includes(n.id));
+  const shifted = new Set(shifts.map(n => n.id)), downstream = [...shifted];
+  for (let i = 0; i < downstream.length; i++) {
+    S.edges.forEach(e => {
+      if (e.from === downstream[i] && !shifted.has(e.to)) { shifted.add(e.to); downstream.push(e.to); }
+    });
+  }
+  return {
+    predictors, shifts,
+    shiftedInputs: observed.filter(n => connected.has(n.id) && shifted.has(n.id)),
+    weightingPredictors: predictors.some(n => shifted.has(n.id)) ? predictors : [],
+  };
+}
+
+function variableBadge(nodeId) {
+  const node = S.nodes.find(n => n.id === nodeId);
+  if (!node) return 'Unknown variable';
+  const label = NODE_TYPES.find(([type]) => type === node.type);
+  if (!label) return escHtml(node.name);
+  return `<span class="variable-ref variable-ref-${label[0]}" title="${escHtml(label[1])}" data-node-id="${node.id}">${escHtml(node.name)}</span>`;
+}
+
+function renderStrategyText(parts) {
+  if (!Array.isArray(parts)) return escHtml(parts);
+  return parts.map(part => typeof part === 'string' ? escHtml(part) : variableBadge(part.nodeId)).join('');
+}
+
+function variableListParts(nodes) {
+  return nodes.flatMap((node, i) => i ? [', ', node] : [node]);
+}
+
+function strategyReason(...parts) {
+  // Keep a plain reason for rule consumers, and explicit references for display.
+  // Do not replace names in prose: a name can also be an ordinary word.
+  return {
+    why: parts.map(part => typeof part === 'string' ? part : part.name).join(''),
+    whyParts: parts.map(part => typeof part === 'string' ? part : { nodeId: part.id }),
+  };
+}
+
+function renderStep2() {
+  const analysis = graphAnalysis();
+  const cards = computeStrategies(analysis);
+  const target = S.nodes.find(n => n.type === 'target');
+  const questions = getQuestions(analysis);
+  const answered = questions.filter(q => getQuestionAnswer(q.key) !== null).length;
+  const confirmed = questions.filter(q => ![null, 'unknown'].includes(getQuestionAnswer(q.key))).length;
+  document.getElementById('step2').innerHTML = `
+<h2 class="sec-h">III. Deployment Strategies</h2>
+<p class="sec-p">These are options to test. Each card gives a reason, checks, and a trade-off.</p>
+<div class="card problem-summary">
+  <div class="card-title">Problem Summary</div>
+  <div class="summary-val"><strong>${confirmed ? 'Recommendations from your graph and answers' : 'Preliminary recommendations — graph only'}</strong></div>
+  <div class="summary-val"><strong>Target:</strong> ${target ? variableBadge(target.id) : 'Not specified'}</div>
+  <div class="summary-val"><strong>Shifts:</strong> ${analysis.shifts.map(n => variableBadge(n.id)).join(', ') || 'None specified'}</div>
+  <p class="strat-field">${!analysis.shifts.length
+    ? 'Add expected shift variables to assess stability across environments.'
+    : analysis.predictors.length
+      ? 'The graph supports a candidate set of stable predictors. Test whether it gives useful predictions.'
+      : 'The current graph checks found no stable predictor set. Other approaches may still be useful.'}</p>
+  <p class="strat-field">${answered} of ${questions.length} current questions answered. Unknown answers do not enable methods. Results depend on the graph being correct.</p>
+</div>
+<div class="strat-grid">
+  ${cards.map(card => `
+  <div class="strat-card" data-strategy="${card.id}">
+    <div class="strat-name">${escHtml(card.action)}</div>
+    <div class="strat-method">${escHtml(card.method)}</div>
+    <div class="strat-why"><strong>Why consider this?</strong> ${renderStrategyText(card.whyParts || card.why)}</div>
+    <div class="strat-field"><strong>What must be checked?</strong> ${escHtml(card.check)}</div>
+    <div class="strat-field"><strong>Trade-off:</strong> ${escHtml(card.tradeoff)}</div>
+    <div class="strat-resources" hidden><!-- Reserved for resource links. --></div>
+  </div>`).join('')}
+  <div class="strat-card">
+    <div class="strat-name">Other strategies</div>
+    <p class="strat-desc">Review your data and the affected inputs to explore more options. You can also change earlier answers.</p>
+    <button class="btn btn-c4 btn-sm" style="margin-top:.8rem" onclick="startDetails()">Review problem details →</button>
   </div>
 </div>`;
 }
 
-function computeStrategies() {
-  const strats = [];
-  const stableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === true);
-  const unstableNodes = S.nodes.filter(n => n.type !== 'target' && S.stableMap[n.id] === false);
-  const latentNodes = S.nodes.filter(n => n.type === 'latent');
-  const hasLatent = latentNodes.length > 0;
-  const hasShifts = shiftVars().length > 0;
-  const target = S.nodes.find(n => n.type === 'target');
-
-  const canAdapt = S.answers.canAdapt !== 'no';
-  const noPrivacy = S.answers.privacyOk === 'no'; // 'no' = no constraints = good
-  const sufficientData = S.answers.sufficientData !== 'no';
-  const computeOk = S.answers.computeConstr !== 'yes';
-  const canIsolateAnswer = getCanIsolateSummary();
-  const canIsolate = canIsolateAnswer === 'yes' || canIsolateAnswer === 'unsure';
-  const canPreprocess = S.answers.canPreprocess !== 'no';
-
-  if (stableNodes.length > 0) {
-    strats.push({
-      name: 'Stable Feature Selection',
-      why: `Applicable because you identified ${stableNodes.length} stable covariate(s): ${stableNodes.map(n=>n.name).join(', ')}.`,
-      desc: 'Build your model using only stable features — those whose relationship with the target is preserved across environments. This gives a performance lower bound regardless of shifts. Even if unstable features improve in-distribution performance, they may harm deployment performance.',
-    });
-  }
-
-  if (unstableNodes.length > 0 && stableNodes.length > 0 && sufficientData) {
-    strats.push({
-      name: 'Invariant Risk Minimization (IRM)',
-      why: 'Applicable because you have both stable and unstable features and sufficient training data.',
-      desc: 'IRM learns a feature representation that achieves an optimal stable predictor across all training environments simultaneously. It explicitly penalises reliance on unstable spurious correlations. Requires data from multiple training environments.',
-    });
-  }
-
-  if (canAdapt && sufficientData) {
-    if (noPrivacy) {
-      strats.push({
-        name: 'Domain Adaptation',
-        why: 'Applicable because the model can access deployment data and no significant privacy constraints apply.',
-        desc: 'Use unlabelled or labelled data from the deployment environment to adapt model parameters or reweight training samples. Approaches include importance weighting (IPW), adversarial domain adaptation, and domain-invariant representation learning.',
-      });
-    } else {
-      strats.push({
-        name: 'Privacy-Preserving Adaptation',
-        why: 'Applicable because adaptation is possible but privacy constraints restrict centralising deployment data.',
-        desc: 'Federated learning or differential privacy techniques allow models to adapt to deployment data without centralising sensitive records. The model updates can be aggregated from local sites while preserving patient privacy.',
-      });
-    }
-  }
-
-  if (canIsolate) {
-    strats.push({
-      name: 'Adjustment Sets / Inverse Probability Weighting',
-      why: 'Applicable because you indicated that the shift mechanism can be observed or estimated.',
-      desc: 'If you can observe the shift variable (e.g. hospital ID, scanner type) or estimate a propensity score for environment membership, inverse probability weighting (IPW) can rebalance the training distribution to resemble the target domain. This "undoes" selection and covariate shifts.',
-    });
-  }
-
-  if (hasLatent && canIsolate) {
-    strats.push({
-      name: 'Proxy Methods for Latent Variables',
-      why: `Applicable because your graph contains latent (unobserved) variables (${latentNodes.map(n=>n.name).join(', ')}) and proxy information is available.`,
-      desc: 'When latent confounders exist, proxy variables — imperfect but correlated measurements — can be used to recover causal relationships. This allows adjustment for confounding even when the confounder itself is not directly observed.',
-    });
-  }
-
-  if (canPreprocess) {
-    strats.push({
-      name: 'Data Preprocessing to Remove Shift Effects',
-      why: 'Applicable because preprocessing steps to reduce shift influence are available.',
-      desc: 'Apply site-specific normalisation, artifact removal, denoising, or calibration to training and deployment data before model training. Examples: ComBat harmonisation for neuroimaging, de-referencing for wandering EEG signals, or standardising measurement protocols.',
-    });
-  }
-
-  if ((S.structAssump || S.funcAssump) && sufficientData) {
-    strats.push({
-      name: 'Causally Robust Optimization',
-      why: 'Applicable because you specified structural or functional assumptions about the data-generating process.',
-      desc: 'When the form of the causal mechanisms is known (e.g. linear relationships, additive noise), these structural constraints can be incorporated into the training objective. This yields estimators that remain valid under the specified class of shifts.',
-    });
-  }
-
-  if (hasShifts && sufficientData && computeOk) {
-    strats.push({
-      name: 'Counterfactual Data Augmentation',
-      why: 'Applicable when you have specified shift variables and sufficient compute for data generation.',
-      desc: 'Use the causal model to generate synthetic counterfactual training examples — what the data would look like under different shift conditions. This artificially diversifies the training distribution and can help models learn invariant representations without needing multi-site data.',
-    });
-  }
-
-  return strats;
+// Card eligibility is explicit. No free-text note or unknown answer is positive
+// evidence. Graph-only output is limited to the stable predictor candidate.
+function computeStrategies(analysis = graphAnalysis()) {
+  const cards = [], a = S.answers;
+  const hasInputs = S.nodes.some(n => n.type === 'observed');
+  if (analysis.predictors.length) cards.push({
+    id: 'stable-features', action: 'Test the candidate stable predictors', method: 'Stable feature selection',
+    ...strategyReason('The graph supports a stable prediction relationship for this set: ', ...variableListParts(analysis.predictors), '.'),
+    check: 'Confirm that these inputs are available when needed. Check data coverage and test prediction accuracy.',
+    tradeoff: 'Removing other inputs can reduce accuracy. Stability alone does not ensure useful predictions.',
+  });
+  const corrected = analysis.shiftedInputs.filter(n => ['measurement', 'both'].includes(a.inputRoles[n.id]) && a.corrections[n.id] === 'yes');
+  if (corrected.length) cards.push({
+    id: 'measurement-correction', action: 'Correct the affected measurement', method: 'Measurement correction',
+    ...strategyReason('A shift can affect ', ...variableListParts(corrected), '. You confirmed a suitable correction for these inputs.'),
+    check: 'Test that the correction reduces the measurement difference and keeps useful information in each setting.',
+    tradeoff: 'A correction can remove useful signal. Each setting may need a different procedure.',
+  });
+  const edited = analysis.shiftedInputs.filter(n => ['cue', 'both'].includes(a.inputRoles[n.id]) && a.augmentations[n.id] === 'yes');
+  if (edited.length) cards.push({
+    id: 'cue-augmentation', action: 'Vary or remove the unstable cue', method: 'Targeted data augmentation',
+    ...strategyReason('A shift can affect ', ...variableListParts(edited), '. You confirmed that these cues can be edited safely in training inputs.'),
+    check: 'Check that each edit keeps the correct target value and useful clinical information. Test on real data.',
+    tradeoff: 'Edited inputs may differ from real inputs. Too much editing can remove useful signal.',
+  });
+  if (hasInputs && a.trainingEnvironments === 'multiple_identified' && a.worstGroup === 'yes') cards.push({
+    id: 'group-dro', action: 'Protect performance across recorded environments', method: 'Group distributionally robust optimisation (Group DRO)',
+    why: 'Your labelled data have environment identifiers. You want to give priority to the weakest environment.',
+    check: 'Check sample counts and test accuracy in each environment. Use separate data to set training options.',
+    tradeoff: 'Average accuracy may decrease. This method does not ensure performance in new environments.',
+  });
+  if (analysis.weightingPredictors.length && ['unlabelled', 'labelled'].includes(a.deploymentData) && a.coverage === 'yes') cards.push({
+    id: 'covariate-weighting', action: 'Reweight training examples for deployment', method: 'Covariate-shift weighting',
+    ...strategyReason('For ', ...variableListParts(analysis.weightingPredictors), ', the graph supports a stable prediction relationship despite changing input distributions. You have deployment inputs and confirmed data coverage.'),
+    check: 'Check that local inputs represent intended use. Estimate weights for this set. Check for large weights and test with separate data.',
+    tradeoff: 'Large weights can make training unreliable. This method cannot correct changes in the target relationship.',
+  });
+  if (hasInputs && a.deploymentData === 'labelled' && a.localUpdate === 'yes') cards.push({
+    id: 'local-update', action: 'Update using labelled local data', method: 'Supervised adaptation',
+    why: 'You have labelled local data, permission to update, and separate local test data.',
+    check: 'Confirm that the target has the same meaning. Compare the updated model with the original on local test data.',
+    tradeoff: 'The update may fit the local sample too closely. Performance in other settings may decrease.',
+  });
+  return cards;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -1787,62 +1597,25 @@ function doAddEdge() {
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────────────
 function navigate(dir) {
-  // Within Step III, use subStep navigation
-  if (S.step === 2 && dir === 1) {
-    if (S.subStep < 7) { advanceSubStep(); return; }
-    // subStep === 7 (verdict) — advance to Step IV only if feasible/caveats
-    if (S.verdict === 'infeasible') {
-      setNavErr('Problem is infeasible. Revise your answers or return to Step I.');
-      return;
-    }
-  }
   if (S.step === 2 && dir === -1) {
-    if (S.subStep > 0) { retreatSubStep(); return; }
+    S.step = S.strategyReturn;
+    renderAll(); window.scrollTo(0, 0); return;
   }
-
+  if (S.step === 1) {
+    if (dir > 0) advanceDetailQuestion();
+    else retreatDetailQuestion();
+    return;
+  }
   const err = validateStep(S.step, dir);
   if (err) { setNavErr(err); return; }
-  setNavErr('');
-
-  S.step = Math.max(0, Math.min(3, S.step + dir));
-  S.selected = null;
-  if (S.step === 2) { S.subStep = 0; initStableMap(); }
-  renderAll();
-  window.scrollTo(0, 0);
-}
-
-function initStableMap() {
-  const shiftAffected = new Set(shiftVars().flatMap(sv => sv.affects));
-  // Propagate
-  const propagated = new Set(shiftAffected);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    S.edges.forEach(e => {
-      if (propagated.has(e.from) && !propagated.has(e.to)) {
-        const dst = S.nodes.find(n => n.id === e.to);
-        if (dst && dst.type !== 'target') { propagated.add(e.to); changed = true; }
-      }
-    });
-  }
-  varNodes().forEach(n => {
-    if (n.type !== 'target') {
-      if (S.stableMap[n.id] === null || S.stableMap[n.id] === undefined) {
-        S.stableMap[n.id] = !propagated.has(n.id);
-      }
-    }
-  });
+  if (dir > 0) startDetails();
 }
 
 function validateStep(step, dir) {
-  if (dir <= 0) return null; // Always can go back
+  if (dir <= 0) return null;
   if (step === 0) {
     if (varNodes().length < 2) return 'Add at least 2 variables (excluding shift variables) before continuing.';
     if (!S.nodes.some(n => n.type === 'target')) return 'Mark one variable as the Prediction Target before continuing.';
-  }
-  if (step === 2) {
-    if (S.verdict === null) return 'Complete the feasibility analysis before proceeding.';
-    if (S.verdict === 'infeasible') return 'Problem is infeasible. Revise or return to Step I.';
   }
   return null;
 }
@@ -1860,21 +1633,19 @@ function renderAll() {
   const stepper = document.getElementById('stepper');
   const labels = [
     ['I', 'Graph Builder'],
-    ['II', 'Causal Description'],
-    ['III', 'Feasibility Analysis'],
-    ['IV', 'Deployment Strategies'],
+    ['II', 'Problem Details'],
+    ['III', 'Deployment Strategies'],
   ];
   stepper.innerHTML = labels.map(([num, lbl], i) => {
     let cls = 'step-tab';
     if (i === S.step) cls += ' active';
-    else if (i < S.step) cls += ' done';
-    return `<div class="${cls}" data-s="${i}"><span class="snum">${num}</span>${lbl}</div>${i < 3 ? '<span class="step-sep">›</span>' : ''}`;
+    return `<div class="${cls}" data-s="${i}"><span class="snum">${num}</span>${lbl}</div>${i < labels.length - 1 ? '<span class="step-sep">›</span>' : ''}`;
   }).join('');
 
   document.querySelector('main').classList.toggle('wide', S.step === 0);
 
   // Show/hide panels
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const el = document.getElementById('step' + i);
     if (el) el.className = 'step-panel' + (i === S.step ? ' active' : '');
   }
@@ -1883,27 +1654,21 @@ function renderAll() {
   if (S.step === 0) renderStep0();
   else if (S.step === 1) renderStep1();
   else if (S.step === 2) renderStep2();
-  else if (S.step === 3) renderStep3();
 
   // Update bottom nav
   const btnBack = document.getElementById('btn-back');
   const btnNext = document.getElementById('btn-next');
 
-  btnBack.disabled = (S.step === 0 && S.subStep === 0);
+  btnBack.disabled = S.step === 0;
 
-  if (S.step === 3) {
-    btnNext.style.display = 'none';
-  } else {
-    btnNext.style.display = '';
-    const labels3 = ['Next: Causal Description →', 'Next: Feasibility Analysis →', 'Next Question →', ''];
-    if (S.step === 2) {
-      if (S.subStep < 7) btnNext.textContent = 'Next Question →';
-      else if (S.verdict !== 'infeasible') btnNext.textContent = 'Deployment Strategies →';
-      else btnNext.textContent = 'Next →';
-    } else {
-      btnNext.textContent = labels3[S.step];
-    }
-  }
+  const btnPreliminary = document.getElementById('btn-preliminary');
+  btnPreliminary.hidden = S.step === 2;
+  btnPreliminary.textContent = S.step === 0 ? 'View preliminary recommendations' : 'View recommendations';
+  const questions = S.step === 1 ? getQuestions() : [];
+  const index = questions.findIndex(q => q.key === S.questionKey);
+  btnNext.style.display = S.step === 2 ? 'none' : '';
+  btnNext.textContent = S.step === 0 ? 'Next: Problem Details →'
+    : index === questions.length - 1 ? 'View recommendations →' : 'Next question →';
 
   setNavErr('');
 }
@@ -1930,7 +1695,6 @@ const EXAMPLES = [
       ],
     },
     after() {
-      S.stableMap[S.nodes.find(n => n.name === 'Weight Loss').id] = false;
       S.structAssump = 'Lung cancer risk is determined by smoking history and background factors (age, occupation, socio-economic status).';
       S.funcAssump = 'The screening policy shift affects the distribution of Weight Loss (a downstream symptom) but does not change the causal mechanism from Smoking to Lung Cancer.';
     },
@@ -1952,7 +1716,6 @@ const EXAMPLES = [
       ],
     },
     after() {
-      S.stableMap[S.nodes.find(n => n.name === 'Markings').id] = false;
       S.structAssump = 'The unobserved disease state determines the skin appearance, which is captured in the image. Clinicians observe the skin appearance and decide which areas to mark, and these markings also appear in the image.';
       S.funcAssump = 'Marking conventions vary between institutions and physicians, which changes the distribution of Markings given the skin appearance. The pathway from disease state through skin appearance to the image is stable across sites.';
     },
@@ -1973,7 +1736,6 @@ const EXAMPLES = [
       ],
     },
     after() {
-      S.stableMap[S.nodes.find(n => n.name === 'Donepezil').id] = false;
       S.structAssump = 'Severe dementia in two years, donepezil prescription and the p-tau217 biomarker share a common unobserved cause, neurodegeneration.';
       S.funcAssump = 'Donepezil prescription policy varies between sites (conservative vs. prevention first), which changes the distribution of Donepezil given neurodegeneration. The relationship between the p-tau217 biomarker and neurodegeneration is stable across sites.';
     },
@@ -2075,8 +1837,9 @@ function applyGraph(g) {
   if (visited !== nodes.length) return 'the graph contains a cycle.';
 
   S.nodes = nodes; S.edges = edges; S.nodePos = pos; S.view = {};
-  S.stableMap = {}; nodes.forEach(n => { if (!isShift(n)) S.stableMap[n.id] = null; });
-  S.answers.canIsolateByShift = {}; S.selected = null; S.graphMsg = ''; S.noteSel = null;
+  S.answers = emptyAnswers();
+  S.structAssump = ''; S.funcAssump = ''; S.questionKey = null; S.strategyReturn = 0;
+  S.selected = null; S.graphMsg = ''; S.noteSel = null;
   nodeSeq = seq;
   return null;
 }
@@ -2398,7 +2161,7 @@ function escHtml(s) {
 // INIT
 // ─────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
-  const svgId = ['dag0', 'dag1', 'dag2'][S.step];
+  const svgId = ['dag0', 'dag1'][S.step];
   if (svgId) rerenderDAG(svgId);
 });
 
