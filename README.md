@@ -8,9 +8,9 @@ The app is based on *A Causal Framework for Mitigating Data Shifts in Healthcare
 
 ## Workflow
 
-1. **I. Graph Builder:** Add the target, observed inputs, latent variables, and shift variables. Continue to the questions or select **View preliminary recommendations**.
-2. **II. Problem Details:** Answer conditional questions, one at a time. Optional causal notes are available in a collapsed section. This stage combines the former Stages II and III.
-3. **III. Deployment Strategies:** Review a green problem summary and strategy cards. This was Stage IV. **Other strategies** opens the first unanswered question, or the first question if all are answered.
+1. **Graph Builder:** Add the target, observed inputs, latent variables, and shift variables. Continue to the questions or select **View preliminary recommendations**.
+2. **Problem Details:** Answer conditional questions, one at a time. Optional causal notes are available in a collapsed section. This stage combines the former Stages II and III.
+3. **Deployment Strategies:** Review a green problem summary and strategy cards. This was Stage IV. **Other strategies** opens the first unanswered question, or the first question if all are answered.
 
 Users can view recommendations without completing the questions. With no confirmed answers, only the stable predictor card can appear. Each strategy card gives an action, method, reason, required checks, and trade-off. A resource-link element is reserved but hidden.
 
