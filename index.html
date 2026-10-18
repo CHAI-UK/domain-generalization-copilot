@@ -111,10 +111,6 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .inline-name{flex:1;min-width:0;border-color:transparent !important;background:transparent !important;font-weight:600;padding:.15rem .35rem !important}
 .inline-name:hover,.inline-name:focus{border-color:var(--border) !important;background:var(--surf) !important}
 .type-sel{width:auto !important;font-size:.62rem !important;font-weight:800;text-transform:uppercase;padding:2px 4px !important;border-radius:20px !important;cursor:pointer}
-.type-observed{background:#dbeafe !important;color:#1e40af;border-color:#bfdbfe !important}
-.type-latent{background:#f1f5f9 !important;color:#475569}
-.type-target{background:#fef3c7 !important;color:#92400e;border-color:#fde68a !important}
-.type-shift{background:#1e293b !important;color:#f1f5f9;border-color:#1e293b !important}
 
 /* BANNERS */
 .banner{border-radius:7px;padding:.6rem .85rem;font-size:.75rem;line-height:1.55;margin-bottom:.85rem}
@@ -164,11 +160,12 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .strat-field{font-size:.75rem;line-height:1.55;margin-top:.6rem}
 .strat-method{font-size:.72rem;color:var(--muted);margin-bottom:.6rem}
 .variable-ref{padding:.06em .35em;border:1px solid;border-radius:4px;font-weight:600;white-space:normal;overflow-wrap:anywhere;box-decoration-break:clone;-webkit-box-decoration-break:clone}
-.variable-ref-observed{background:#eff6ff;border-color:#bfdbfe;color:var(--col-obs)}
-.variable-ref-target{background:#fff7ed;border-color:#fdba74;color:#9a3412}
-.variable-ref-shift{background:var(--col-shift);border-color:var(--col-shift);color:#fff}
-.variable-ref-latent{background:#f1f5f9;border-color:#cbd5e1;border-style:dashed;color:#475569}
+.type-observed,.variable-ref-observed{background:#eff6ff !important;border-color:#bfdbfe !important;color:var(--col-obs)}
+.type-target,.variable-ref-target{background:#fff7ed !important;border-color:#fdba74 !important;color:#9a3412}
+.type-shift,.variable-ref-shift{background:var(--col-shift) !important;border-color:var(--col-shift) !important;color:#fff}
+.type-latent,.variable-ref-latent{background:#f1f5f9 !important;border-color:#cbd5e1 !important;border-style:dashed;color:#475569}
 .strat-why,.strat-field,.problem-summary .summary-val{line-height:1.8}
+.question-fieldset .q-text,.question-fieldset .q-hint{line-height:1.8}
 .nav-right{flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:640px){.bottom-nav{padding:.5rem}.bottom-nav .btn{font-size:.7rem;padding:.5rem}body{padding-bottom:3rem}}
 .strat-desc{font-size:.75rem;color:var(--muted);line-height:1.55}
@@ -1220,7 +1217,7 @@ function getQuestions(analysis = graphAnalysis()) {
   });
   analysis.shiftedInputs.forEach(n => {
     questions.push({
-      key: `role:${n.id}`, title: `What does “${n.name}” represent in your inputs?`,
+      key: `role:${n.id}`, ...variableText('title', 'What does ', n, ' represent in your inputs?'),
       hint: 'The graph shows that a data shift can affect this input. A cue is a part of an input, such as an image marking, that could be edited.',
       options: [
         { value: 'measurement', label: 'A measurement that might need correction' },
@@ -1232,19 +1229,19 @@ function getQuestions(analysis = graphAnalysis()) {
     });
     const role = S.answers.inputRoles[n.id];
     if (role === 'measurement' || role === 'both') questions.push({
-      key: `correction:${n.id}`, title: `Is a suitable correction for “${n.name}” known?`,
+      key: `correction:${n.id}`, ...variableText('title', 'Is a suitable correction for ', n, ' known?'),
       hint: 'Choose Yes only if the procedure reduces the measurement difference, preserves information needed for prediction, and can be applied to training and deployment data where needed.',
       options: YES_NO_UNKNOWN,
     });
     if (role === 'cue' || role === 'both') questions.push({
-      key: `augmentation:${n.id}`, title: `Can you safely vary or remove “${n.name}” in training inputs?`,
+      key: `augmentation:${n.id}`, ...variableText('title', 'Can you safely vary or remove ', n, ' in training inputs?'),
       hint: 'Choose Yes only if a known editing procedure preserves the correct target value and useful clinical information. This is an edit to recorded inputs, not a change to the patient.',
       options: YES_NO_UNKNOWN,
     });
   });
   if (analysis.weightingPredictors.length && ['unlabelled', 'labelled'].includes(S.answers.deploymentData)) questions.push({
     key: 'coverage', title: 'Do training data cover the input values expected at deployment?',
-    hint: `Check this for: ${analysis.weightingPredictors.map(n => n.name).join(', ')}. Weighting cannot replace training examples for values or combinations that are absent.`,
+    ...variableText('hint', 'Check this for: ', ...variableListParts(analysis.weightingPredictors), '. Weighting cannot replace training examples for values or combinations that are absent.'),
     options: YES_NO_UNKNOWN,
   });
   return questions;
@@ -1307,8 +1304,8 @@ function renderStep1() {
       <div class="q-label">Question ${index + 1} of ${questions.length}</div>
       <p class="q-hint">${answered} answered. Follow-up questions appear only when needed.</p>
       <fieldset class="question-fieldset">
-        <legend class="q-text">${escHtml(question.title)}</legend>
-        <p class="q-hint">${escHtml(question.hint)}</p>
+        <legend class="q-text">${renderVariableText(question.titleParts || question.title)}</legend>
+        <p class="q-hint">${renderVariableText(question.hintParts || question.hint)}</p>
         <div class="ans-opts">${optionHtml}</div>
       </fieldset>` : '<p class="q-text">No questions apply to the current graph.</p><p class="q-hint">Add observed inputs to explore more strategies.</p>'}
     </div>
@@ -1460,7 +1457,7 @@ function variableBadge(nodeId) {
   return `<span class="variable-ref variable-ref-${label[0]}" title="${escHtml(label[1])}" data-node-id="${node.id}">${escHtml(node.name)}</span>`;
 }
 
-function renderStrategyText(parts) {
+function renderVariableText(parts) {
   if (!Array.isArray(parts)) return escHtml(parts);
   return parts.map(part => typeof part === 'string' ? escHtml(part) : variableBadge(part.nodeId)).join('');
 }
@@ -1469,12 +1466,12 @@ function variableListParts(nodes) {
   return nodes.flatMap((node, i) => i ? [', ', node] : [node]);
 }
 
-function strategyReason(...parts) {
-  // Keep a plain reason for rule consumers, and explicit references for display.
+function variableText(field, ...parts) {
+  // Keep plain text for rule consumers, and explicit references for display.
   // Do not replace names in prose: a name can also be an ordinary word.
   return {
-    why: parts.map(part => typeof part === 'string' ? part : part.name).join(''),
-    whyParts: parts.map(part => typeof part === 'string' ? part : { nodeId: part.id }),
+    [field]: parts.map(part => typeof part === 'string' ? part : part.name).join(''),
+    [`${field}Parts`]: parts.map(part => typeof part === 'string' ? part : { nodeId: part.id }),
   };
 }
 
@@ -1505,7 +1502,7 @@ function renderStep2() {
   <div class="strat-card" data-strategy="${card.id}">
     <div class="strat-name">${escHtml(card.action)}</div>
     <div class="strat-method">${escHtml(card.method)}</div>
-    <div class="strat-why"><strong>Why consider this?</strong> ${renderStrategyText(card.whyParts || card.why)}</div>
+    <div class="strat-why"><strong>Why consider this?</strong> ${renderVariableText(card.whyParts || card.why)}</div>
     <div class="strat-field"><strong>What must be checked?</strong> ${escHtml(card.check)}</div>
     <div class="strat-field"><strong>Trade-off:</strong> ${escHtml(card.tradeoff)}</div>
     <div class="strat-resources" hidden><!-- Reserved for resource links. --></div>
@@ -1525,21 +1522,21 @@ function computeStrategies(analysis = graphAnalysis()) {
   const hasInputs = S.nodes.some(n => n.type === 'observed');
   if (analysis.predictors.length) cards.push({
     id: 'stable-features', action: 'Test the candidate stable predictors', method: 'Stable feature selection',
-    ...strategyReason('The graph supports a stable prediction relationship for this set: ', ...variableListParts(analysis.predictors), '.'),
+    ...variableText('why', 'The graph supports a stable prediction relationship for this set: ', ...variableListParts(analysis.predictors), '.'),
     check: 'Confirm that these inputs are available when needed. Check data coverage and test prediction accuracy.',
     tradeoff: 'Removing other inputs can reduce accuracy. Stability alone does not ensure useful predictions.',
   });
   const corrected = analysis.shiftedInputs.filter(n => ['measurement', 'both'].includes(a.inputRoles[n.id]) && a.corrections[n.id] === 'yes');
   if (corrected.length) cards.push({
     id: 'measurement-correction', action: 'Correct the affected measurement', method: 'Measurement correction',
-    ...strategyReason('A shift can affect ', ...variableListParts(corrected), '. You confirmed a suitable correction for these inputs.'),
+    ...variableText('why', 'A shift can affect ', ...variableListParts(corrected), '. You confirmed a suitable correction for these inputs.'),
     check: 'Test that the correction reduces the measurement difference and keeps useful information in each setting.',
     tradeoff: 'A correction can remove useful signal. Each setting may need a different procedure.',
   });
   const edited = analysis.shiftedInputs.filter(n => ['cue', 'both'].includes(a.inputRoles[n.id]) && a.augmentations[n.id] === 'yes');
   if (edited.length) cards.push({
     id: 'cue-augmentation', action: 'Vary or remove the unstable cue', method: 'Targeted data augmentation',
-    ...strategyReason('A shift can affect ', ...variableListParts(edited), '. You confirmed that these cues can be edited safely in training inputs.'),
+    ...variableText('why', 'A shift can affect ', ...variableListParts(edited), '. You confirmed that these cues can be edited safely in training inputs.'),
     check: 'Check that each edit keeps the correct target value and useful clinical information. Test on real data.',
     tradeoff: 'Edited inputs may differ from real inputs. Too much editing can remove useful signal.',
   });
@@ -1551,7 +1548,7 @@ function computeStrategies(analysis = graphAnalysis()) {
   });
   if (analysis.weightingPredictors.length && ['unlabelled', 'labelled'].includes(a.deploymentData) && a.coverage === 'yes') cards.push({
     id: 'covariate-weighting', action: 'Reweight training examples for deployment', method: 'Covariate-shift weighting',
-    ...strategyReason('For ', ...variableListParts(analysis.weightingPredictors), ', the graph supports a stable prediction relationship despite changing input distributions. You have deployment inputs and confirmed data coverage.'),
+    ...variableText('why', 'For ', ...variableListParts(analysis.weightingPredictors), ', the graph supports a stable prediction relationship despite changing input distributions. You have deployment inputs and confirmed data coverage.'),
     check: 'Check that local inputs represent intended use. Estimate weights for this set. Check for large weights and test with separate data.',
     tradeoff: 'Large weights can make training unreliable. This method cannot correct changes in the target relationship.',
   });

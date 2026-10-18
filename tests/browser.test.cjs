@@ -57,7 +57,22 @@ async function main() {
       await pause(100);
     }
     assert.equal(await evaluate('document.querySelectorAll(".step-tab").length'), 3);
-    await evaluate('loadExample(1); showStrategies()');
+    await evaluate('loadExample(1)');
+    const colourMatches = await evaluate(`(() => {
+      const holder = document.createElement('div');
+      document.body.appendChild(holder);
+      const matches = ['observed', 'target', 'shift', 'latent'].map(type => {
+        const node = S.nodes.find(n => n.type === type);
+        holder.innerHTML = variableBadge(node.id);
+        const badge = getComputedStyle(holder.firstElementChild);
+        const menu = getComputedStyle(document.querySelector('.type-sel.type-' + type));
+        return ['backgroundColor', 'color', 'borderTopColor'].every(property => badge[property] === menu[property]);
+      });
+      holder.remove();
+      return matches;
+    })()`);
+    assert.deepEqual(colourMatches, [true, true, true, true]);
+    await evaluate('showStrategies()');
     assert.match(await evaluate('document.querySelector(".step-panel.active h2").textContent'), /III\. Deployment Strategies/);
     assert.equal(await evaluate('document.querySelectorAll("[data-strategy]").length'), 1);
     assert.equal(await evaluate('getComputedStyle(document.querySelector(".problem-summary")).backgroundColor'), 'rgb(240, 253, 244)');
@@ -73,10 +88,19 @@ async function main() {
     await evaluate('document.querySelector("input[value=yes]").click(); document.getElementById("btn-preliminary").click()');
     assert.equal(await evaluate('document.querySelectorAll("[data-strategy=group-dro]").length'), 1);
     assert.equal(await evaluate('document.querySelector("[data-strategy] .strat-resources").hidden'), true);
+    await evaluate('startDetails(); S.questionKey="role:5"; renderAll()');
+    assert.equal(await evaluate('document.querySelector("legend .variable-ref-observed").textContent'), 'Markings');
+    await evaluate('selectAnswer("role:5", "both"); S.questionKey="correction:5"; renderAll()');
+    assert.equal(await evaluate('document.querySelector("legend .variable-ref-observed").textContent'), 'Markings');
+    await evaluate('S.questionKey="augmentation:5"; renderAll()');
+    assert.equal(await evaluate('document.querySelector("legend .variable-ref-observed").textContent'), 'Markings');
+    await evaluate('selectAnswer("deploymentData", "unlabelled"); S.questionKey="coverage"; renderAll()');
+    assert.equal(await evaluate('document.querySelectorAll(".question-fieldset .q-hint .variable-ref-observed").length'), await evaluate('graphAnalysis().weightingPredictors.length'));
+    await evaluate('showStrategies()');
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await evaluate('S.nodes.find(n => n.name === "Skin Appearance").name = "LongInputName".repeat(15); renderStep2()');
     assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
-    console.log('PASS real browser: stages, cards, questions, focus, summary, variable badges, resources, long names at mobile width');
+    console.log('PASS real browser: matching node colours, questionnaire labels, stages, cards, focus, resources, long names at mobile width');
     await send('Browser.close');
   } finally {
     if (socket && socket.readyState === WebSocket.OPEN) socket.close();
