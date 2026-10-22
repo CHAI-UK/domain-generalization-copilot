@@ -41,15 +41,18 @@ These are options to test, not guarantees of accuracy or clinical suitability. `
 | `covariate-weighting`: Reweight training examples for deployment | The graph identifies a stable set with at least one shift-affected member; labelled or unlabelled deployment inputs are available; coverage is confirmed. Estimate weights using the same entire predictor set. |
 | `local-update`: Update using labelled local data | Observed inputs exist; labelled deployment data are available; permission to update and separate local test data are confirmed. |
 
-## State and analysis limits
+## Application Details
 
 - Missing and unknown answers never enable a method. Notes do not enable methods.
 - When an earlier answer hides a follow-up, the app clears that follow-up answer. Changing an input role also clears its procedure answers.
-- Changes to nodes, node types, or edges clear input roles, procedures, and coverage. Shared environment and data-access answers remain. Renaming or moving a node does not clear answers.
 - Changing or removing the prediction target clears all questionnaire answers. Labels and local test data for the old target may not apply to the new one.
 - Importing or replacing a graph clears notes and all answers. Saved JSON contains only the graph, positions, and annotations; it does not save questionnaire answers or causal notes.
+- Changes to nodes, node types, or edges clear input roles, procedures, and coverage. Shared environment and data-access answers remain. Renaming or moving a node does not clear answers.
+
+## Limitations 
 - Stability uses d-separation with latent variables retained in the graph. Only observed inputs can be selected. The bounded search checks all target-connected observed inputs together, their ancestral subset, and each input alone. It does not enumerate or rank every possible set. Failure to find a set does not establish that robust prediction is impossible.
 - Graph findings assume the graph is correct. Coverage and safe procedures are user-confirmed assumptions. Accuracy still needs evaluation on suitable data.
+- Recommendations produced by the app are based on asympototic analysis. Results can vary for smaller data sets, and the app does not provide any finite-sample guarantees. 
 
 ## Run and check
 
