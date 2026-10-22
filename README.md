@@ -52,7 +52,8 @@ These are options to test, not guarantees of accuracy or clinical suitability. `
 ## Limitations 
 - Stability uses d-separation with latent variables retained in the graph. Only observed inputs can be selected. The bounded search checks all target-connected observed inputs together, their ancestral subset, and each input alone. It does not enumerate or rank every possible set. Failure to find a set does not establish that robust prediction is impossible.
 - Graph findings assume the graph is correct. Coverage and safe procedures are user-confirmed assumptions. Accuracy still needs evaluation on suitable data.
-- Recommendations produced by the app are based on asympototic analysis. Results can vary for smaller data sets, and the app does not provide any finite-sample guarantees. 
+- Recommendations produced by the app are based on asympototic analysis. Results can vary for smaller data sets, and the app does not provide finite-sample guarantees. 
+    - This point is especially subtle. Consider two predictors, A and B. Predictor A uses one scalar variable as an input, and predictor B uses an image as an input. Even if theoretically predictor B is a better predictor, the performance in practice for predictor A might be superior, because overall less parameters are needed to fit a model with less inputs. 
 
 ## Run and check
 
