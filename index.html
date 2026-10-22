@@ -1187,11 +1187,11 @@ function getQuestions(analysis = graphAnalysis()) {
   if (!S.nodes.some(n => n.type === 'observed')) return [];
   const questions = [{
     key: 'trainingEnvironments', title: 'Where do your labelled training data come from?',
-    hint: 'An environment can be a hospital, scanner, population, or time period. Identifiers show which environment each record comes from.',
+    hint: 'An environment can be a hospital, scanner, population, or time period. The source environment is known when each record has a source name or code, such as Hospital A or Scanner 2. For example, data may come from several hospitals, but the hospital name or code was not stored with each record. In that case, the source environment is not recorded. This is separate from the prediction target label.',
     options: [
       { value: 'single', label: 'One environment' },
-      { value: 'multiple_unknown', label: 'Several environments, without identifiers' },
-      { value: 'multiple_identified', label: 'Several environments, with identifiers' },
+      { value: 'multiple_unknown', label: 'Several environments; the source environment is not recorded for each record' },
+      { value: 'multiple_identified', label: 'Several environments; the source environment is recorded for each record' },
       { value: 'unknown', label: 'Not known' },
     ],
   }];
@@ -1542,7 +1542,7 @@ function computeStrategies(analysis = graphAnalysis()) {
   });
   if (hasInputs && a.trainingEnvironments === 'multiple_identified' && a.worstGroup === 'yes') cards.push({
     id: 'group-dro', action: 'Protect performance across recorded environments', method: 'Group distributionally robust optimisation (Group DRO)',
-    why: 'Your labelled data have environment identifiers. You want to give priority to the weakest environment.',
+    why: 'Your labelled data record the source environment for each record. You want to give priority to the weakest environment.',
     check: 'Check sample counts and test accuracy in each environment. Use separate data to set training options.',
     tradeoff: 'Average accuracy may decrease. This method does not ensure performance in new environments.',
   });
