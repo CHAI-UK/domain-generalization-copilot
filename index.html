@@ -1115,7 +1115,7 @@ function renderStep0() {
 
   p.innerHTML = `
 <h2 class="sec-h">I. Graph Builder</h2>
-<p class="sec-p">Build the causal graph of your prediction problem: the variables in your system, the target you want to predict, and the <strong>shift variables</strong> (squares) that index the environments where your model will be deployed. An edge S → X from a shift variable means the mechanism generating X can vary across environments.</p>
+<p class="sec-p">Build the causal graph of your prediction problem: the variables in your system, the target you want to predict, and the <strong>shift variables</strong> (squares) that index the environments where your model will be deployed. An edge S → X from a shift variable means the mechanism generating X can vary across environments. Use the Load feature to see pre-generated examples.</p>
 <div class="builder">
   <div class="builder-side" id="builder-side">${S.annotate ? annotPanelHtml() : `
     <div class="card">
@@ -1187,11 +1187,11 @@ function getQuestions(analysis = graphAnalysis()) {
   if (!S.nodes.some(n => n.type === 'observed')) return [];
   const questions = [{
     key: 'trainingEnvironments', title: 'Where do your labelled training data come from?',
-    hint: 'An environment can be a hospital, scanner, population, or time period. Identifiers show which environment each record comes from.',
+    hint: 'An environment can be a hospital, scanner, population, or time period. The source environment is known when each record has a source name or code, such as Hospital A or Scanner 2. For example, data may come from several hospitals, but the hospital name or code was not stored with each record. In that case, the source environment is not recorded. This is separate from the prediction target label.',
     options: [
       { value: 'single', label: 'One environment' },
-      { value: 'multiple_unknown', label: 'Several environments, without identifiers' },
-      { value: 'multiple_identified', label: 'Several environments, with identifiers' },
+      { value: 'multiple_unknown', label: 'Several environments; the source environment is not recorded for each record' },
+      { value: 'multiple_identified', label: 'Several environments; the source environment is recorded for each record' },
       { value: 'unknown', label: 'Not known' },
     ],
   }];
@@ -1484,7 +1484,7 @@ function renderStep2() {
   const confirmed = questions.filter(q => ![null, 'unknown'].includes(getQuestionAnswer(q.key))).length;
   document.getElementById('step2').innerHTML = `
 <h2 class="sec-h">III. Deployment Strategies</h2>
-<p class="sec-p">These are options to test. Each card gives a reason, checks, and a trade-off.</p>
+<p class="sec-p">Here we present a set of strategy cards based on the causal graph and your answers. Each strategy card gives a reason, checks, and a trade-off.</p>
 <div class="card problem-summary">
   <div class="card-title">Problem Summary</div>
   <div class="summary-val"><strong>${confirmed ? 'Recommendations from your graph and answers' : 'Preliminary recommendations — graph only'}</strong></div>
@@ -1509,7 +1509,7 @@ function renderStep2() {
   </div>`).join('')}
   <div class="strat-card">
     <div class="strat-name">Other strategies</div>
-    <p class="strat-desc">Review your data and the affected inputs to explore more options. You can also change earlier answers.</p>
+    <p class="strat-desc">Revise your graph or your answers to explore more options. Also consider if other variables are available that could be included in your graph.</p>
     <button class="btn btn-c4 btn-sm" style="margin-top:.8rem" onclick="startDetails()">Review problem details →</button>
   </div>
 </div>`;
@@ -1542,7 +1542,7 @@ function computeStrategies(analysis = graphAnalysis()) {
   });
   if (hasInputs && a.trainingEnvironments === 'multiple_identified' && a.worstGroup === 'yes') cards.push({
     id: 'group-dro', action: 'Protect performance across recorded environments', method: 'Group distributionally robust optimisation (Group DRO)',
-    why: 'Your labelled data have environment identifiers. You want to give priority to the weakest environment.',
+    why: 'Your labelled data record the source environment for each record. You want to give priority to the weakest environment.',
     check: 'Check sample counts and test accuracy in each environment. Use separate data to set training options.',
     tradeoff: 'Average accuracy may decrease. This method does not ensure performance in new environments.',
   });

@@ -8,9 +8,9 @@ The app is based on *A Causal Framework for Mitigating Data Shifts in Healthcare
 
 ## Workflow
 
-1. **I. Graph Builder:** Add the target, observed inputs, latent variables, and shift variables. Continue to the questions or select **View preliminary recommendations**.
-2. **II. Problem Details:** Answer conditional questions, one at a time. Optional causal notes are available in a collapsed section. This stage combines the former Stages II and III.
-3. **III. Deployment Strategies:** Review a green problem summary and strategy cards. This was Stage IV. **Other strategies** opens the first unanswered question, or the first question if all are answered.
+1. **Graph Builder:** Add the target, observed inputs, latent variables, and shift variables. Continue to the questions or select **View preliminary recommendations**.
+2. **Problem Details:** Answer conditional questions, one at a time. Optional causal notes are available in a collapsed section. This stage combines the former Stages II and III.
+3. **Deployment Strategies:** Review a green problem summary and strategy cards. This was Stage IV. **Other strategies** opens the first unanswered question, or the first question if all are answered.
 
 Users can view recommendations without completing the questions. With no confirmed answers, only the stable predictor card can appear. Each strategy card gives an action, method, reason, required checks, and trade-off. A resource-link element is reserved but hidden.
 
@@ -41,15 +41,19 @@ These are options to test, not guarantees of accuracy or clinical suitability. `
 | `covariate-weighting`: Reweight training examples for deployment | The graph identifies a stable set with at least one shift-affected member; labelled or unlabelled deployment inputs are available; coverage is confirmed. Estimate weights using the same entire predictor set. |
 | `local-update`: Update using labelled local data | Observed inputs exist; labelled deployment data are available; permission to update and separate local test data are confirmed. |
 
-## State and analysis limits
+## Application Details
 
 - Missing and unknown answers never enable a method. Notes do not enable methods.
 - When an earlier answer hides a follow-up, the app clears that follow-up answer. Changing an input role also clears its procedure answers.
-- Changes to nodes, node types, or edges clear input roles, procedures, and coverage. Shared environment and data-access answers remain. Renaming or moving a node does not clear answers.
 - Changing or removing the prediction target clears all questionnaire answers. Labels and local test data for the old target may not apply to the new one.
 - Importing or replacing a graph clears notes and all answers. Saved JSON contains only the graph, positions, and annotations; it does not save questionnaire answers or causal notes.
+- Changes to nodes, node types, or edges clear input roles, procedures, and coverage. Shared environment and data-access answers remain. Renaming or moving a node does not clear answers.
+
+## Limitations 
 - Stability uses d-separation with latent variables retained in the graph. Only observed inputs can be selected. The bounded search checks all target-connected observed inputs together, their ancestral subset, and each input alone. It does not enumerate or rank every possible set. Failure to find a set does not establish that robust prediction is impossible.
 - Graph findings assume the graph is correct. Coverage and safe procedures are user-confirmed assumptions. Accuracy still needs evaluation on suitable data.
+- Recommendations produced by the app are based on asympototic analysis. Results can vary for smaller data sets, and the app does not provide finite-sample guarantees. 
+    - This point is especially subtle. Consider two predictors, A and B. Predictor A uses one scalar variable as an input, and predictor B uses an image as an input. Even if theoretically predictor B is a better predictor, the performance in practice for predictor A might be superior, because overall less parameters are needed to fit a model with less inputs. 
 
 ## Run and check
 
