@@ -1117,7 +1117,7 @@ function renderStep0() {
 
   p.innerHTML = `
 <h2 class="sec-h">I. Graph Builder</h2>
-<p class="sec-p">Build the causal graph of your prediction problem: the variables in your system, the target you want to predict, and the <strong>shift variables</strong> (squares) that index the environments where your model will be deployed. An edge S → X from a shift variable means the mechanism generating X can vary across environments. Use the Load feature to see pre-generated examples.</p>
+<p class="sec-p">Build a causal graph for your prediction problem: the variables in your system, the target you want to predict, and the shift variables (squares) that index the environments where your model will be deployed. If S is a shift variable, an edge S → X means the mechanism generating X can vary across environments indexed by S. Use the <strong>Load</strong> feature to see pre-generated examples.</p>
 <div class="builder">
   <div class="builder-side" id="builder-side">${S.annotate ? annotPanelHtml() : `
     <div class="card">
@@ -1304,7 +1304,7 @@ function renderStep1() {
     <div class="q-card">
       ${question ? `
       <div class="q-label">Question ${index + 1} of ${questions.length}</div>
-      <p class="q-hint">${answered} answered. Follow-up questions appear only when needed.</p>
+      <p class="q-hint">Extra questions may appear based on your answers.</p>
       <fieldset class="question-fieldset">
         <legend class="q-text">${renderVariableText(question.titleParts || question.title)}</legend>
         <p class="q-hint">${renderVariableText(question.hintParts || question.hint)}</p>
