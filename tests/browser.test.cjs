@@ -76,7 +76,7 @@ async function main() {
     assert.match(await evaluate('document.querySelector(".step-panel.active h2").textContent'), /III\. Deployment Strategies/);
     assert.equal(await evaluate('document.querySelectorAll("[data-strategy]").length'), 1);
     assert.equal(await evaluate('getComputedStyle(document.querySelector(".problem-summary")).backgroundColor'), 'rgb(240, 253, 244)');
-    assert.equal(await evaluate('document.querySelectorAll("[data-strategy=stable-features] .variable-ref-observed").length'), await evaluate('graphAnalysis().predictors.length'));
+    assert.equal(await evaluate('document.querySelectorAll("[data-strategy=stable-features] .variable-ref-observed").length'), await evaluate('graphAnalysis().predictorSets.flat().length'));
     assert.equal(await evaluate('document.querySelectorAll(".problem-summary .variable-ref-target").length'), 1);
     assert.equal(await evaluate('document.querySelectorAll(".problem-summary .variable-ref-shift").length'), 1);
     await evaluate('document.querySelector(".strat-card:last-child button").click()');
