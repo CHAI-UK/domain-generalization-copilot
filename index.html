@@ -157,6 +157,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .strat-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07)}
 .strat-name{font-size:.88rem;font-weight:700;margin-bottom:.3rem}
 .strat-why{font-size:.72rem;color:var(--c4);margin-bottom:.6rem;line-height:1.55}
+.strat-sets{margin:.3rem 0 0 1.2rem;padding:0}
 .strat-field{font-size:.75rem;line-height:1.55;margin-top:.6rem}
 .strat-method{font-size:.72rem;color:var(--muted);margin-bottom:.6rem}
 .variable-ref{padding:.06em .35em;border:1px solid;border-radius:4px;font-weight:600;white-space:normal;overflow-wrap:anywhere;box-decoration-break:clone;-webkit-box-decoration-break:clone}
@@ -1372,12 +1373,9 @@ function showStrategies() {
 // d-separation via the ancestral moral graph. Latent nodes remain in the graph;
 // only observed nodes can be conditioned on as predictors. Conditioning can open
 // collider paths, so descendant reachability is not a sufficient stability test.
-function separatesShifts(predictors) {
-  const target = S.nodes.find(n => n.type === 'target');
-  const shifts = shiftVars();
-  if (!target || !shifts.length) return false;
-  const conditioned = new Set(predictors);
-  const ancestors = new Set([target.id, ...shifts.map(n => n.id), ...predictors]);
+function dSeparated(xs, ys, zs) {
+  const conditioned = new Set(zs), targets = new Set(ys);
+  const ancestors = new Set([...xs, ...ys, ...zs]);
   const queue = [...ancestors];
   for (let i = 0; i < queue.length; i++) {
     S.edges.forEach(e => {
@@ -1393,10 +1391,10 @@ function separatesShifts(predictors) {
     parents.forEach(parent => link(parent, id));
     parents.forEach((a, i) => parents.slice(i + 1).forEach(b => link(a, b)));
   });
-  const visited = new Set(conditioned), pending = shifts.map(n => n.id);
+  const visited = new Set(conditioned), pending = [...xs];
   for (let i = 0; i < pending.length; i++) {
     const id = pending[i];
-    if (id === target.id) return false;
+    if (targets.has(id)) return false;
     if (visited.has(id)) continue;
     visited.add(id);
     adj.get(id).forEach(next => { if (!visited.has(next)) pending.push(next); });
@@ -1404,11 +1402,27 @@ function separatesShifts(predictors) {
   return true;
 }
 
+function separatesShifts(predictors) {
+  const target = S.nodes.find(n => n.type === 'target');
+  const shifts = shiftVars();
+  if (!target || !shifts.length) return false;
+  return dSeparated(shifts.map(n => n.id), [target.id], predictors);
+}
+
+function* combinations(items, k, start = 0) {
+  if (!k) { yield []; return; }
+  for (let i = start; i <= items.length - k; i++) {
+    for (const rest of combinations(items, k - 1, i + 1)) yield [items[i], ...rest];
+  }
+}
+
+const MAX_PREDICTOR_SETS = 4, MAX_SET_CHECKS = 1 << 15;
+
 function graphAnalysis() {
   const observed = S.nodes.filter(n => n.type === 'observed');
   const target = S.nodes.find(n => n.type === 'target');
   const shifts = shiftVars();
-  if (!target) return { predictors: [], shifts, shiftedInputs: [], weightingPredictors: [] };
+  if (!target) return { predictorSets: [], shifts, shiftedInputs: [], weightingPredictors: [] };
   // Start with observed nodes connected to the target without traversing shifts.
   // Connectivity suggests a possible signal, not its strength or clinical utility.
   const connected = new Set([target.id]), pending = [target.id];
@@ -1421,21 +1435,23 @@ function graphAnalysis() {
     });
   }
   const ids = observed.filter(n => connected.has(n.id)).map(n => n.id);
-  // Observed ancestors of target and shifts provide a conservative separator
-  // candidate. Also try all connected predictors and singletons. This bounded
-  // search deliberately does not enumerate or rank every possible predictor set.
-  const ancestors = new Set([target.id, ...shifts.map(n => n.id)]);
-  const upstream = [...ancestors];
-  for (let i = 0; i < upstream.length; i++) {
-    S.edges.forEach(e => {
-      if (e.to === upstream[i] && !ancestors.has(e.from)) {
-        ancestors.add(e.from); upstream.push(e.from);
+  // Stable sets are not closed under union, so several incomparable sets can
+  // exist. A set is kept if it separates the target from every shift and each
+  // member is informative given the rest. Searching from the largest size down
+  // means every superset was checked first, so kept sets are maximal and never
+  // subsets of each other. The search stops after a fixed number of checks.
+  const sets = [];
+  let checked = 0;
+  if (shifts.length) {
+    search: for (let k = ids.length; k > 0; k--) {
+      for (const set of combinations(ids, k)) {
+        if (sets.length === MAX_PREDICTOR_SETS || checked++ === MAX_SET_CHECKS) break search;
+        if (sets.some(kept => set.every(id => kept.includes(id)))) continue;
+        if (separatesShifts(set) && set.every(id => !dSeparated([id], [target.id], set.filter(o => o !== id)))) sets.push(set);
       }
-    });
+    }
   }
-  const candidates = [ids, ids.filter(id => ancestors.has(id)), ...ids.map(id => [id])];
-  const predictorIds = candidates.find(set => set.length && separatesShifts(set)) || [];
-  const predictors = observed.filter(n => predictorIds.includes(n.id));
+  const predictorSets = sets.map(set => observed.filter(n => set.includes(n.id)));
   const shifted = new Set(shifts.map(n => n.id)), downstream = [...shifted];
   for (let i = 0; i < downstream.length; i++) {
     S.edges.forEach(e => {
@@ -1443,9 +1459,9 @@ function graphAnalysis() {
     });
   }
   return {
-    predictors, shifts,
+    predictorSets, shifts,
     shiftedInputs: observed.filter(n => connected.has(n.id) && shifted.has(n.id)),
-    weightingPredictors: predictors.some(n => shifted.has(n.id)) ? predictors : [],
+    weightingPredictors: predictorSets.find(set => set.some(n => shifted.has(n.id))) || [],
   };
 }
 
@@ -1492,7 +1508,9 @@ function renderStep2() {
   <div class="summary-val"><strong>Shifts:</strong> ${analysis.shifts.map(n => variableBadge(n.id)).join(', ') || 'None specified'}</div>
   <p class="strat-field">${!analysis.shifts.length
     ? 'Add expected shift variables to assess stability across environments.'
-    : analysis.predictors.length
+    : analysis.predictorSets.length > 1
+      ? `The graph supports ${analysis.predictorSets.length} alternative sets of stable predictors. Test which gives the most useful predictions.`
+      : analysis.predictorSets.length
       ? 'The graph supports a candidate set of stable predictors. Test whether it gives useful predictions.'
       : 'The current graph checks found no stable predictor set. Other approaches may still be useful.'}</p>
   <p class="strat-field">${answered} of ${questions.length} current questions answered. Unknown answers do not enable methods. Results depend on the graph being correct.</p>
@@ -1502,7 +1520,8 @@ function renderStep2() {
   <div class="strat-card" data-strategy="${card.id}">
     <div class="strat-name">${escHtml(card.action)}</div>
     <div class="strat-method">${escHtml(card.method)}</div>
-    <div class="strat-why"><strong>Why consider this?</strong> ${renderVariableText(card.whyParts || card.why)}</div>
+    <div class="strat-why"><strong>Why consider this?</strong> ${renderVariableText(card.whyParts || card.why)}${card.whyList
+      ? `<ul class="strat-sets">${card.whyList.map(parts => `<li>${renderVariableText(parts)}</li>`).join('')}</ul>` : ''}</div>
     <div class="strat-field"><strong>What must be checked?</strong> ${escHtml(card.check)}</div>
     <div class="strat-field"><strong>Trade-off:</strong> ${escHtml(card.tradeoff)}</div>
     <div class="strat-resources" hidden><!-- Reserved for resource links. --></div>
@@ -1520,10 +1539,22 @@ function renderStep2() {
 function computeStrategies(analysis = graphAnalysis()) {
   const cards = [], a = S.answers;
   const hasInputs = S.nodes.some(n => n.type === 'observed');
-  if (analysis.predictors.length) cards.push({
+  const sets = analysis.predictorSets;
+  if (sets.length) cards.push({
     id: 'stable-features', action: 'Test the candidate stable predictors', method: 'Stable feature selection',
-    ...variableText('why', 'The graph supports a stable prediction relationship for this set: ', ...variableListParts(analysis.predictors), '.'),
-    check: 'Confirm that these inputs are available when needed. Check data coverage and test prediction accuracy.',
+    ...(sets.length === 1
+      ? variableText('why', 'The graph supports a stable prediction relationship for this set: ', ...variableListParts(sets[0]), '.')
+      : {
+        // Plain `why` keeps every set for rule consumers; the display lists one set per line.
+        why: variableText('why', 'The graph supports a stable prediction relationship for each of these sets: ',
+          ...sets.flatMap((set, i) => [i ? ' or {' : '{', ...variableListParts(set), '}']),
+          '. Combining sets may not be stable.').why,
+        whyParts: ['The graph supports a stable prediction relationship for each of these sets. Combining sets may not be stable.'],
+        whyList: sets.map(set => variableText('set', ...variableListParts(set)).setParts),
+      }),
+    check: sets.length === 1
+      ? 'Confirm that these inputs are available when needed. Check data coverage and test prediction accuracy.'
+      : 'Confirm that these inputs are available when needed. Check data coverage and compare prediction accuracy between the sets.',
     tradeoff: 'Removing other inputs can reduce accuracy. Stability alone does not ensure useful predictions.',
   });
   const corrected = analysis.shiftedInputs.filter(n => ['measurement', 'both'].includes(a.inputRoles[n.id]) && a.corrections[n.id] === 'yes');
@@ -1735,6 +1766,41 @@ const EXAMPLES = [
     after() {
       S.structAssump = 'Severe dementia in two years, donepezil prescription and the p-tau217 biomarker share a common unobserved cause, neurodegeneration.';
       S.funcAssump = 'Donepezil prescription policy varies between sites (conservative vs. prevention first), which changes the distribution of Donepezil given neurodegeneration. The relationship between the p-tau217 biomarker and neurodegeneration is stable across sites.';
+    },
+  },
+  {
+    name: 'Test: Five Stable Sets',
+    description: 'Synthetic test graph with five maximal stable predictor sets',
+    // Each pair {Ci, Di} is stable and informative alone. Ui joins Ci to D(i+1), so
+    // conditioning on two neighbouring pairs opens a path from the shift to Y. The
+    // conflicts form a 5-cycle, whose five maximal independent sets are the stable sets.
+    graph: {
+      nodes: [
+        { id: 1, name: 'Environment', type: 'shift', x: 80, y: 250 },
+        { id: 2, name: 'Y', type: 'target', x: 640, y: 250 },
+        { id: 3, name: 'C1', type: 'observed', x: 220, y: 70 },
+        { id: 4, name: 'C2', type: 'observed', x: 220, y: 160 },
+        { id: 5, name: 'C3', type: 'observed', x: 220, y: 250 },
+        { id: 6, name: 'C4', type: 'observed', x: 220, y: 340 },
+        { id: 7, name: 'C5', type: 'observed', x: 220, y: 430 },
+        { id: 8, name: 'D1', type: 'observed', x: 500, y: 70 },
+        { id: 9, name: 'D2', type: 'observed', x: 500, y: 160 },
+        { id: 10, name: 'D3', type: 'observed', x: 500, y: 250 },
+        { id: 11, name: 'D4', type: 'observed', x: 500, y: 340 },
+        { id: 12, name: 'D5', type: 'observed', x: 500, y: 430 },
+        { id: 13, name: 'U1', type: 'latent', x: 360, y: 115 },
+        { id: 14, name: 'U2', type: 'latent', x: 360, y: 205 },
+        { id: 15, name: 'U3', type: 'latent', x: 360, y: 295 },
+        { id: 16, name: 'U4', type: 'latent', x: 360, y: 385 },
+        { id: 17, name: 'U5', type: 'latent', x: 360, y: 475 },
+      ],
+      edges: [
+        { from: 1, to: 3 }, { from: 1, to: 4 }, { from: 1, to: 5 }, { from: 1, to: 6 }, { from: 1, to: 7 },
+        { from: 3, to: 8 }, { from: 4, to: 9 }, { from: 5, to: 10 }, { from: 6, to: 11 }, { from: 7, to: 12 },
+        { from: 2, to: 8 }, { from: 2, to: 9 }, { from: 2, to: 10 }, { from: 2, to: 11 }, { from: 2, to: 12 },
+        { from: 13, to: 3 }, { from: 14, to: 4 }, { from: 15, to: 5 }, { from: 16, to: 6 }, { from: 17, to: 7 },
+        { from: 13, to: 9 }, { from: 14, to: 10 }, { from: 15, to: 11 }, { from: 16, to: 12 }, { from: 17, to: 8 },
+      ],
     },
   },
 ];

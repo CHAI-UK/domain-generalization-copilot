@@ -73,7 +73,43 @@ test('Joint predictor set can block paths neither predictor blocks alone', () =>
   graph(['shift', 'observed', 'observed', 'target'], [[1, 2], [1, 3], [2, 4], [3, 4]]);
   assert.equal(run('separatesShifts([2])'), false);
   assert.equal(run('separatesShifts([3])'), false);
-  assert.equal(run('graphAnalysis().predictors.length'), 2);
+  assert.deepEqual(value('graphAnalysis().predictorSets.map(s => s.map(n => n.id))'), [[2, 3]]);
+});
+test('Stable but uninformative predictors are dropped', () => {
+  // Shift -> N3 <- latent -> N4 <- target: {N3} is stable but independent of the target.
+  graph(['shift', 'latent', 'observed', 'observed', 'target'], [[1, 3], [2, 3], [2, 4], [5, 4]]);
+  assert.equal(run('separatesShifts([3])'), true);
+  assert.deepEqual(value('graphAnalysis().predictorSets.map(s => s.map(n => n.id))'), [[4]]);
+});
+test('Incomparable maximal stable sets are all shown when their union is unstable', () => {
+  graph(['shift', 'latent', 'observed', 'observed', 'observed', 'target'],
+    [[1, 3], [3, 4], [6, 4], [2, 3], [2, 5], [6, 5]]);
+  assert.equal(run('separatesShifts([3, 4, 5])'), false);
+  assert.deepEqual(value('graphAnalysis().predictorSets.map(s => s.map(n => n.id))'), [[3, 4], [5]]);
+  run('showStrategies()');
+  assert.match(element('step2').innerHTML, /2 alternative sets/);
+});
+test('At most four predictor sets are shown', () => {
+  // Three copies of the two-set graph above give eight maximal stable sets.
+  const types = ['shift', 'target'], edges = [];
+  for (let b = 3; b < 15; b += 4) {
+    types.push('latent', 'observed', 'observed', 'observed');
+    edges.push([1, b + 1], [b + 1, b + 2], [2, b + 2], [b, b + 1], [b, b + 3], [2, b + 3]);
+  }
+  graph(types, edges);
+  const sets = value('graphAnalysis().predictorSets.map(s => s.map(n => n.id))');
+  assert.equal(sets.length, 4);
+  sets.forEach((a, i) => sets.forEach((b, j) => {
+    if (i !== j) assert.ok(!a.every(id => b.includes(id)), 'No set may be a subset of another');
+  }));
+});
+test('Five-set test example shows four maximal sets, one per line', () => {
+  run('loadExample(3)');
+  const sets = value('graphAnalysis().predictorSets.map(s => s.map(n => n.name).join("+"))');
+  assert.deepEqual(sets, ['C1+C3+D1+D3', 'C1+C4+D1+D4', 'C2+C4+D2+D4', 'C2+C5+D2+D5']);
+  assert.ok(run('separatesShifts(S.nodes.filter(n => ["C3", "C5", "D3", "D5"].includes(n.name)).map(n => n.id))'));
+  run('showStrategies()');
+  assert.equal((element('step2').innerHTML.match(/<li>/g) || []).length, 4);
 });
 test('Latent confounding and a target mechanism shift prevent false stability claims', () => {
   graph(['shift', 'latent', 'observed', 'target'], [[1, 2], [2, 3], [2, 4]]);
@@ -100,8 +136,8 @@ test('Bundled examples identify useful observed predictors', () => {
   const expected = ['Smoking', 'Skin Appearance', 'p-tau217'];
   expected.forEach((name, i) => {
     assert.equal(run(`applyGraph(EXAMPLES[${i}].graph)`), null);
-    assert.ok(run(`graphAnalysis().predictors.some(n => n.name === ${JSON.stringify(name)})`));
-    assert.equal(run('graphAnalysis().predictors.some(n => n.type !== "observed")'), false);
+    assert.ok(run(`graphAnalysis().predictorSets.flat().some(n => n.name === ${JSON.stringify(name)})`));
+    assert.equal(run('graphAnalysis().predictorSets.flat().some(n => n.type !== "observed")'), false);
     assert.deepEqual(cardIds(), ['stable-features']);
   });
 });
@@ -268,7 +304,7 @@ test('Weighting needs stable shifted predictors, deployment inputs, and confirme
 });
 test('Weighting is not suggested for unchanged predictors or a shifted target mechanism', () => {
   graph(['shift', 'observed', 'observed', 'target'], [[1, 2], [3, 4]]);
-  assert.equal(run('graphAnalysis().predictors.length'), 1);
+  assert.equal(run('graphAnalysis().predictorSets.length'), 1);
   assert.equal(run('graphAnalysis().weightingPredictors.length'), 0);
   answer('deploymentData', 'unlabelled');
   assert.ok(!questionKeys().includes('coverage'));
@@ -341,7 +377,7 @@ test('Structural edits clear graph-specific answers but retain shared operationa
   assert.equal(run('S.answers.worstGroup'), 'yes');
   assert.equal(run('S.answers.deploymentData'), 'labelled');
   assert.equal(run('S.answers.localUpdate'), 'yes');
-  assert.equal(run('graphAnalysis().predictors.length'), 0);
+  assert.equal(run('graphAnalysis().predictorSets.length'), 0);
   assert.deepEqual(new Set(cardIds()), new Set(['group-dro', 'local-update']));
 });
 test('Changing, removing, or replacing the target resets answers; renaming retains them', () => {

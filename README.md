@@ -34,7 +34,7 @@ These are options to test, not guarantees of accuracy or clinical suitability. `
 
 | Strategy ID and card | Required conditions |
 | --- | --- |
-| `stable-features`: Test the candidate stable predictors | A nonempty observed predictor set separates the target from every specified shift in the graph. No questionnaire answer is required. |
+| `stable-features`: Test the candidate stable predictors | A nonempty observed predictor set separates the target from every specified shift in the graph, and each of its variables is informative about the target given the others. Up to four maximal sets are shown; none is a subset of another. Stable sets are not closed under union, so combining them may not be stable. No questionnaire answer is required. |
 | `measurement-correction`: Correct the affected measurement | At least one relevant shift-affected input has role `measurement` or `both`, with correction confirmed. |
 | `cue-augmentation`: Vary or remove the unstable cue | At least one relevant shift-affected input has role `cue` or `both`, with safe training edits confirmed. |
 | `group-dro`: Protect performance across recorded environments | Observed inputs exist; labelled data come from several environments with identifiers; protecting the weakest recorded environment is a confirmed priority. Protection in new environments is not established. |
