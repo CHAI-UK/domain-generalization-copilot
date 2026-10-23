@@ -110,6 +110,13 @@ test('Five-set test example shows four maximal sets, one per line', () => {
   assert.ok(run('separatesShifts(S.nodes.filter(n => ["C3", "C5", "D3", "D5"].includes(n.name)).map(n => n.id))'));
   run('showStrategies()');
   assert.equal((element('step2').innerHTML.match(/<li>/g) || []).length, 4);
+  assert.match(element('step2').innerHTML, /Only the first four stable sets are shown/);
+  assert.match(element('step2').innerHTML, /more than 4 alternative sets/);
+  run('S.showAllPredictorSets = true; renderStep2()');
+  assert.equal((element('step2').innerHTML.match(/<li>/g) || []).length, 5);
+  assert.doesNotMatch(element('step2').innerHTML, /Only the first four/);
+  run('showStrategies()');
+  assert.equal(run('graphAnalysis().predictorSets.length'), 4);
 });
 test('Latent confounding and a target mechanism shift prevent false stability claims', () => {
   graph(['shift', 'latent', 'observed', 'target'], [[1, 2], [2, 3], [2, 4]]);

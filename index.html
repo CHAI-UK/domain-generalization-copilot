@@ -252,6 +252,7 @@ const S = {
   step: 0,    // 0=graph, 1=optional problem details, 2=strategies
   questionKey: null, // Stable key of the current conditional question
   strategyReturn: 0, // Where Back returns after opening strategies
+  showAllPredictorSets: false, // Lift the shown-set limit until strategies are reopened
 
   nodes: [],      // {id,name,type:'observed'|'latent'|'target'|'shift',note?}
   edges: [],      // {from,to,note?} — edges out of a shift node are shift edges
@@ -1366,6 +1367,7 @@ function showStrategies() {
   if (S.step !== 2) S.strategyReturn = S.step;
   S.step = 2;
   S.selected = null;
+  S.showAllPredictorSets = false;
   renderAll();
   window.scrollTo(0, 0);
 }
@@ -1416,13 +1418,13 @@ function* combinations(items, k, start = 0) {
   }
 }
 
-const MAX_PREDICTOR_SETS = 4, MAX_SET_CHECKS = 1 << 15;
+const MAX_PREDICTOR_SETS = 4, MAX_SET_CHECKS = 1 << 15; // The card text says "four".
 
 function graphAnalysis() {
   const observed = S.nodes.filter(n => n.type === 'observed');
   const target = S.nodes.find(n => n.type === 'target');
   const shifts = shiftVars();
-  if (!target) return { predictorSets: [], shifts, shiftedInputs: [], weightingPredictors: [] };
+  if (!target) return { predictorSets: [], morePredictorSets: false, shifts, shiftedInputs: [], weightingPredictors: [] };
   // Start with observed nodes connected to the target without traversing shifts.
   // Connectivity suggests a possible signal, not its strength or clinical utility.
   const connected = new Set([target.id]), pending = [target.id];
@@ -1440,18 +1442,21 @@ function graphAnalysis() {
   // member is informative given the rest. Searching from the largest size down
   // means every superset was checked first, so kept sets are maximal and never
   // subsets of each other. The search stops after a fixed number of checks.
+  // One set beyond the shown limit is sought, only to tell whether more exist.
+  const limit = S.showAllPredictorSets ? Infinity : MAX_PREDICTOR_SETS;
   const sets = [];
   let checked = 0;
   if (shifts.length) {
     search: for (let k = ids.length; k > 0; k--) {
       for (const set of combinations(ids, k)) {
-        if (sets.length === MAX_PREDICTOR_SETS || checked++ === MAX_SET_CHECKS) break search;
+        if (sets.length > limit || checked++ === MAX_SET_CHECKS) break search;
         if (sets.some(kept => set.every(id => kept.includes(id)))) continue;
         if (separatesShifts(set) && set.every(id => !dSeparated([id], [target.id], set.filter(o => o !== id)))) sets.push(set);
       }
     }
   }
-  const predictorSets = sets.map(set => observed.filter(n => set.includes(n.id)));
+  const morePredictorSets = sets.length > limit;
+  const predictorSets = sets.slice(0, limit).map(set => observed.filter(n => set.includes(n.id)));
   const shifted = new Set(shifts.map(n => n.id)), downstream = [...shifted];
   for (let i = 0; i < downstream.length; i++) {
     S.edges.forEach(e => {
@@ -1459,7 +1464,7 @@ function graphAnalysis() {
     });
   }
   return {
-    predictorSets, shifts,
+    predictorSets, morePredictorSets, shifts,
     shiftedInputs: observed.filter(n => connected.has(n.id) && shifted.has(n.id)),
     weightingPredictors: predictorSets.find(set => set.some(n => shifted.has(n.id))) || [],
   };
@@ -1509,7 +1514,7 @@ function renderStep2() {
   <p class="strat-field">${!analysis.shifts.length
     ? 'Add expected shift variables to assess stability across environments.'
     : analysis.predictorSets.length > 1
-      ? `The graph supports ${analysis.predictorSets.length} alternative sets of stable predictors. Test which gives the most useful predictions.`
+      ? `The graph supports ${analysis.morePredictorSets ? 'more than ' : ''}${analysis.predictorSets.length} alternative sets of stable predictors. Test which gives the most useful predictions.`
       : analysis.predictorSets.length
       ? 'The graph supports a candidate set of stable predictors. Test whether it gives useful predictions.'
       : 'The current graph checks found no stable predictor set. Other approaches may still be useful.'}</p>
@@ -1522,6 +1527,8 @@ function renderStep2() {
     <div class="strat-method">${escHtml(card.method)}</div>
     <div class="strat-why"><strong>Why consider this?</strong> ${renderVariableText(card.whyParts || card.why)}${card.whyList
       ? `<ul class="strat-sets">${card.whyList.map(parts => `<li>${renderVariableText(parts)}</li>`).join('')}</ul>` : ''}</div>
+    ${card.id === 'stable-features' && analysis.morePredictorSets ? `<div class="strat-field">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="S.showAllPredictorSets = true; renderStep2()">Show more</button></div>` : ''}
     <div class="strat-field"><strong>What must be checked?</strong> ${escHtml(card.check)}</div>
     <div class="strat-field"><strong>Trade-off:</strong> ${escHtml(card.tradeoff)}</div>
     <div class="strat-resources" hidden><!-- Reserved for resource links. --></div>
